@@ -61,6 +61,8 @@ void PBRRenderer::frame()
 		for (const auto& t : model->getJoints())
 		{
 			auto w = model->getNodes()[t.nodeIdx]->getWorldTransform();
+			w[3] -= glm::vec4(model->getTransform()->getWorldPosition(), 0.0f);
+
 			auto iB = t.inverseBindMatrix;
 
 			jointMatrices.push_back(w * iB);
@@ -108,6 +110,7 @@ void PBRRenderer::frame()
 		for (const auto& prim : scene->sceneModels[i]->getPrimitives())
 		{
 			loadMaterialProperties(scene->sceneModels[i]->getTextures(), prim.materialDesc);
+
 			renderPrimitive(prim, pbrShader);
 		}
 	} 

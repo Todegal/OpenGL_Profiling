@@ -32,7 +32,7 @@ public:
     float getPolarAngle() const { return polarAngle; }
     float getRadius() const { return radius; }
 
-    void setViewPoint(glm::vec3& view) { center = view; }
+    void setViewPoint(glm::vec3 view) { center = view; }
 
 private:
     glm::vec3 center; // Center of the orbit camera sphere (the point upon which the camera looks)

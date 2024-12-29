@@ -33,9 +33,14 @@ struct TransformNode
 		glm::mat4 r = glm::toMat4(rotation);
 		glm::mat4 s = glm::scale(glm::mat4(1.0f), scale);
 
-		glm::mat4 transformation = t * (r * s);
+		glm::mat4 transformation = t * (s * r);
 
 		return transformation;
+	}
+
+	inline const glm::vec3 getWorldPosition() const
+	{
+		return glm::vec3(getWorldTransform()[3]);
 	}
 
 	glm::vec3 translation = glm::vec3(0.0f);
@@ -108,9 +113,13 @@ private: // Containers
 
 	std::unordered_map<std::string, Animation> animations;
 	std::string currentAnimation;
+	std::string nextAnimation;
+
+	float blendDuration = 0.0f;
+	float blendElapsed = 0.0f;
 
 public:
-	void selectAnimation(std::string animationName, bool lockstep = false);
+	void selectAnimation(std::string animationName, float blendDuration = 0.0f, bool lockstep = false);
 
 	void advanceAnimation(float deltaTime);
 
@@ -118,7 +127,7 @@ public:
 	Model(std::filesystem::path gltfPath, std::string root = "");
 	Model(const std::vector<GLuint>& buffers, const std::vector<MeshPrimitive>& primitives, const std::vector<GLuint>& textures)
 		: buffers(buffers), primitives(primitives), textures(textures), 
-		transformation(std::make_shared<TransformNode>()), currentAnimation(""), rootNode("")
+		transformation(std::make_shared<TransformNode>()), currentAnimation(""), nextAnimation(""), rootNode("")
 	{
 		for (auto& prim : primitives)
 		{
@@ -146,8 +155,13 @@ public:
 
 	const std::shared_ptr<TransformNode> getTransform() const { return transformation; }
 	const std::vector<std::shared_ptr<TransformNode>> getNodes() const { return nodes; }
+	std::shared_ptr<TransformNode> getNode(const std::string name);
 
-	const glm::vec3 getVelocity() ;
+	const glm::vec3 getVelocity();
+
+	const std::string getRootNode() { return rootNode; }
+
+	const bool isRigged() { return joints.size() > 0; }
 
 private:
 	// Decoupled transform data which doesn't make me cry trying to parse through a linked list

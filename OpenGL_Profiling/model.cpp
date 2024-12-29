@@ -1,42 +1,46 @@
 #include "model.h"
 
 #include <glm/gtc/type_ptr.hpp>
+#include <glm/gtx/string_cast.hpp>
 
 #include <spdlog/spdlog.h>
 
 #include <iostream>
 #include <span>
 
-void Model::selectAnimation(std::string animationName, bool lockstep)
+void Model::selectAnimation(std::string animationName, float blendDuration, bool lockstep)
 {
-	std::string newAnimation = "";
-
-	if (animations.find(animationName) != animations.end())
-	{
-		newAnimation = animationName;
-	}
-	else
+	if (animations.find(animationName) == animations.end())
 	{
 		spdlog::warn("Invalid animation: {}", animationName);
 		return;
 	}
 
 	// don't change animation if it's the same as the one currently playing!
-	if (newAnimation == currentAnimation)
+	if (animationName == currentAnimation || nextAnimation == animationName)
 		return;
 
 	// If there is currently an animation selected, start the new one at a proportional time
-	if (currentAnimation != "" && newAnimation != "" && lockstep)
+	if (currentAnimation != "" && animationName != "" && lockstep)
 	{
 		float elapsedRatio = animations[currentAnimation].elapsed / animations[currentAnimation].duration;
-		animations[newAnimation].elapsed = animations[newAnimation].duration * elapsedRatio;
+		animations[animationName].elapsed = animations[animationName].duration * elapsedRatio;
 	}
 	else
 	{
-		animations[newAnimation].elapsed = 0.0f;
+		animations[animationName].elapsed = 0.0f;
 	}
 
-	currentAnimation = newAnimation;
+	if (blendDuration > 0.0f)
+	{
+		this->blendDuration = blendDuration;
+		blendElapsed = 0.0f;
+		nextAnimation = animationName;
+	}
+	else
+	{
+		currentAnimation = animationName;
+	}
 }
 
 std::unordered_map<int, Model::TransformFrame> Model::getFrame(std::string animation, float t)
@@ -137,23 +141,47 @@ void Model::advanceAnimation(float deltaTime)
 	anim.elapsed += deltaTime;
 	if (anim.loop) anim.elapsed = std::fmod(anim.elapsed, anim.duration);
 
-	const auto offsets = getFrame(currentAnimation, anim.elapsed);
+	float blendFactor = 0.0f;
+
+	const std::unordered_map<int, TransformFrame> offsets = getFrame(currentAnimation, anim.elapsed);
+	std::unordered_map<int, TransformFrame> nextOffsets = offsets;
+
+	if (nextAnimation != "" && blendElapsed < blendDuration)
+	{
+		auto& nextAnim = animations[nextAnimation];
+
+		nextAnim.elapsed += deltaTime;
+		if (nextAnim.loop) nextAnim.elapsed = std::fmod(nextAnim.elapsed, nextAnim.duration);
+
+		blendElapsed += deltaTime;
+
+		nextOffsets = getFrame(nextAnimation, nextAnim.elapsed);
+
+		blendFactor = blendElapsed / blendDuration;
+	}
 
 	for (const auto& [i, offset] : offsets)
 	{
-		nodes[i]->rotation = offset.rotation;
+		nodes[i]->rotation = glm::slerp(offset.rotation, nextOffsets[i].rotation, blendFactor);
 
-		if (nodes[i]->name != rootNode)
-			nodes[i]->translation = offset.translation;
-		else
-			nodes[i]->translation.y = offset.translation.y;
+		nodes[i]->translation = glm::mix(offset.translation, nextOffsets[i].translation, blendFactor);
 
-		nodes[i]->scale = offset.scale;
+		nodes[i]->scale = glm::mix(offset.scale, nextOffsets[i].scale, blendFactor);
+	}
+
+	// If the blend is finished, clean up
+	if (blendElapsed > blendDuration)
+	{
+		blendElapsed = 0.0f;
+		blendDuration = 0.0f;
+
+		currentAnimation = nextAnimation;
+		nextAnimation = "";
 	}
 }
 
 Model::Model(std::filesystem::path gltfPath, std::string root)
-	: buffers(0), textures(0), primitives(0), currentAnimation(""), rootNode(root)
+	: buffers(0), textures(0), primitives(0), currentAnimation(""), nextAnimation(""), rootNode(root)
 {
 	tinygltf::TinyGLTF loader;
 	//loader.SetImageLoader(imageLoad, nullptr);
@@ -462,12 +490,28 @@ std::shared_ptr<Model> Model::constructUnitQuad()
 
 const glm::vec3 Model::getVelocity()
 {
-	if (animations.find(currentAnimation) != animations.end())
+	if (currentAnimation == "")
+		return glm::vec3(0.0f);
+
+	glm::vec3 v = animations[currentAnimation].velocity;
+
+	if (blendElapsed < blendDuration)
 	{
-		return animations[currentAnimation].velocity;
+		return glm::mix(v, animations[nextAnimation].velocity, blendElapsed / blendDuration);
 	}
 
-	return glm::vec3(0.0f);
+	return v;
+}
+
+std::shared_ptr<TransformNode> Model::getNode(const std::string name)
+{
+	auto idx = std::find_if(nodes.begin(), nodes.end(), [&](std::shared_ptr<TransformNode> n)
+		{
+			return n->name == name;
+		}
+	);
+
+	return *idx;
 }
 
 void Model::loadBuffers(const tinygltf::Model& model)
@@ -502,6 +546,8 @@ void Model::loadAnimations(const tinygltf::Model& model)
 
 		std::vector<Joint>::iterator rootJointIdx = joints.end();
 		int rootNodeIdx = -1;
+		
+		float start = 0.0f;
 		glm::vec3 initialPos, finalPos;
 
 		for (const auto& channel : animation.channels)
@@ -515,6 +561,7 @@ void Model::loadAnimations(const tinygltf::Model& model)
 			const auto& inputAccessor = model.accessors[sampler.input];
 
 			if (inputAccessor.maxValues[0] > maxDuration) maxDuration = inputAccessor.maxValues[0];
+			if (inputAccessor.minValues[0] > start) start = inputAccessor.minValues[0];
 
 			animationChannel.keyframeTimes = accessorToFloats(model, inputAccessor);
 
@@ -540,12 +587,18 @@ void Model::loadAnimations(const tinygltf::Model& model)
 
 		anim.duration = maxDuration;
 
+		spdlog::trace("Loaded animation : {}, duration : {}", animation.name, anim.duration);
+
+		float realDuration = maxDuration - start;
+
+		glm::vec3 naiveVelocity = (finalPos - initialPos) / realDuration;
+
 		if (rootNodeIdx != -1)
 		{
 			// Now convert these back into world space and calculate the bounds properly
 			initialPos =
 				nodes[rootNodeIdx]->getWorldTransform() *
-				glm::inverse(rootJointIdx->inverseBindMatrix) *
+				glm::inverse(rootJointIdx->inverseBindMatrix) * 
 				glm::vec4(initialPos, 1.0f);
 
 			finalPos =
@@ -554,8 +607,21 @@ void Model::loadAnimations(const tinygltf::Model& model)
 				glm::vec4(finalPos, 1.0f);
 
 			anim.rootOffset = (finalPos - initialPos);
-			anim.velocity = anim.rootOffset / anim.duration;
+			anim.velocity = anim.rootOffset / realDuration;
+		}
 
+		for (auto& channel : anim.channels)
+		{
+			if (channel.path == "translation" && channel.target == rootNodeIdx)
+			{
+				for (size_t i = 0; i < channel.keyframeTimes.size(); i++)
+				{
+					channel.values[(i * 3)] -= naiveVelocity.x * channel.keyframeTimes[i];
+					channel.values[(i * 3) + 1] -= naiveVelocity.y * channel.keyframeTimes[i];
+					channel.values[(i * 3) + 2] -= naiveVelocity.z * channel.keyframeTimes[i];
+				}
+
+			}
 		}
 
 		animations[animation.name] = anim;
@@ -636,7 +702,6 @@ void Model::loadTextures(const tinygltf::Model& model)
 	glBindTexture(GL_TEXTURE_2D, 0);
 }
 
-// Recursively load node tree and meshes
 void Model::loadNodes(const tinygltf::Model& model)
 {
 	for (size_t i = 0; i < model.nodes.size(); i++)

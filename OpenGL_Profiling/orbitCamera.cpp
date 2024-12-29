@@ -71,9 +71,9 @@ const glm::vec3 OrbitCamera::getEye() const
 	const auto cosinePolar = cos(polarAngle);
 
 	// Calculate eye position out of them
-	const auto x = center.x + radius * cosinePolar * cosineAzimuth;
-	const auto y = center.y + radius * sinePolar;
-	const auto z = center.z + radius * cosinePolar * sineAzimuth;
+	const auto x = center.x + (radius * cosinePolar * cosineAzimuth);
+	const auto y = center.y + (radius * sinePolar);
+	const auto z = center.z + (radius * cosinePolar * sineAzimuth);
 
 	return glm::vec3(x, y, z);
 }

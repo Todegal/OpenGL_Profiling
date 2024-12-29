@@ -18,6 +18,7 @@
 #undef STB_IMAGE_WRITE_IMPLEMENTATION
 
 #include <glm/gtc/random.hpp>
+#include <glm/gtx/string_cast.hpp>
 
 #include "inputHandler.h"
 #include "model.h"
@@ -88,7 +89,7 @@ int main()
 	}
 
 	glfwMakeContextCurrent(window);
-	//glfwSwapInterval(0);
+	glfwSwapInterval(0);
 
 	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
 	{
@@ -125,27 +126,19 @@ int main()
 
 	PBRRenderer renderer({ WIDTH, HEIGHT }, camera);
 
-
 	std::vector<std::shared_ptr<Model>> models;
 	const auto m = std::make_shared<Model>("..//Models//Dummy//Dummy.glb", "mixamorig:Hips");
 	models.push_back(m);
 
-	// find head
-	auto head = std::find_if(
-		std::begin(m->getNodes()), std::end(m->getNodes()),
-		[](const std::shared_ptr<TransformNode> n)
-		{
-			return n->name == "mixamorig:Spine2";
-		}
-	);
-
-	//camera.setViewPoint(*head->translation);
+	camera.setViewPoint(m->getTransform()->translation + glm::vec3(0, 2, 0));
 
 	models[0]->selectAnimation("idle");
 
-	models.push_back(Model::constructUnitQuad());
-	models[1]->getTransform()->rotation = glm::quat(glm::radians(glm::vec3(-90, 0, 0)));
-	models[1]->getTransform()->scale *= 100;
+	//models.push_back(Model::constructUnitQuad());
+	//models[1]->getTransform()->rotation = glm::quat(glm::radians(glm::vec3(-90, 0, 0)));
+	//models[1]->getTransform()->scale *= 100;
+
+	models.push_back(std::make_shared<Model>("C:/Users/Niall Townley/Documents/Source/Viper/Models/Sponza/glTF/Sponza.gltf"));
 
 	std::vector<Light> lights;
 	lights.push_back(
@@ -156,7 +149,7 @@ int main()
 		}
 	);
 
-	int nLights = 10;
+	int nLights = 4;
 
 	for (size_t i = 0; i < nLights; i++)
 	{
@@ -167,7 +160,7 @@ int main()
 			{
 				glm::vec4(position, 1.0f),
 				colour,
-				2.0f
+				10.0f
 			}
 		);
 	}
@@ -252,7 +245,6 @@ int main()
 	input.defineAction("sprint", { GLFW_KEY_LEFT_SHIFT });
 	input.defineAction("jump", { GLFW_KEY_SPACE });
 
-
 	glm::mat4 projectionMatrix = glm::perspective(90.0f, static_cast<float>(WIDTH) / static_cast<float>(HEIGHT), 0.00001f, 10000.0f);
 
 	while (!glfwWindowShouldClose(window))
@@ -271,30 +263,30 @@ int main()
 
 		if (input.getAxis("forward") != 0.0f && input.getAction("sprint"))
 		{
-			models[0]->selectAnimation("run", true);
+			models[0]->selectAnimation("run", 0.2f, true);
 		}
 		else if (input.getAxis("forward") != 0.0f)
 		{
-			models[0]->selectAnimation("walk", true);
+			models[0]->selectAnimation("walk", 0.2f, true);
 		}
 		else if (input.getAxis("forward") == 0.0f
 			&& input.getAxis("right") != 0.0f
 			&& input.getAction("sprint"))
 		{
-			models[0]->selectAnimation(input.getAxis("right") > 0.0f ? "strafe_run_right" : "strafe_run_left", true);
+			models[0]->selectAnimation(input.getAxis("right") > 0.0f ? "strafe_run_right" : "strafe_run_left", 0.2f, true);
 		}
 		else if (input.getAxis("forward") == 0.0f
 			&& input.getAxis("right") != 0.0f)
 		{
-			models[0]->selectAnimation(input.getAxis("right") > 0.0f ? "strafe_right" : "strafe_left", true);
+			models[0]->selectAnimation(input.getAxis("right") > 0.0f ? "strafe_right" : "strafe_left", 0.2f, true);
 		}
 		else
 		{
-			models[0]->selectAnimation("idle");
+			models[0]->selectAnimation("idle", 0.3f);
 		}
 
 		scene->sceneLights[0].position = glm::vec3(
-			glm::sin(t.getTimeElapsed<Timer::f_seconds>().count()), 
+			glm::sin(t.getTimeElapsed<Timer::f_seconds>().count()),
 			1,
 			glm::cos(t.getTimeElapsed<Timer::f_seconds>().count())
 		);
@@ -316,14 +308,15 @@ int main()
 
 		models[0]->advanceAnimation(t.getDeltaTime<Timer::f_seconds>().count());
 
+		camera.setViewPoint(models[0]->getTransform()->getWorldPosition() + glm::vec3(0, 1, 0));
+
 		models[0]->getTransform()->translation += glm::vec3(
 			models[0]->getVelocity().x * t.getDeltaTime<Timer::f_seconds>().count(),
 			0.0f,
 			models[0]->getVelocity().z * input.getAxis("forward") * t.getDeltaTime<Timer::f_seconds>().count()
 		);
 
-		//camera.setViewPoint(head->translation);
-
+		
 		renderer.frame();
 
 		glfwSwapBuffers(window);
