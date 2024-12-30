@@ -48,6 +48,9 @@
     <ClCompile Include="inputHandler.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="characterController.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Text Include="modelView.vert">
@@ -73,6 +76,12 @@
     <None Include="vertex_shared.glsl">
       <Filter>Shaders</Filter>
     </None>
+    <None Include="screenQuad.vert">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="debugDepth.frag">
+      <Filter>Shaders</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="model.h">
@@ -94,6 +103,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="inputHandler.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="characterController.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

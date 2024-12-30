@@ -5,7 +5,7 @@
 #include <algorithm>
 #include <numeric>
 
-PBRRenderer::PBRRenderer(glm::ivec2 screenSize, Camera& mainCamera)
+PBRRenderer::PBRRenderer(glm::ivec2 screenSize, const Camera& mainCamera)
 	: dimensions(screenSize), camera(mainCamera)
 {
 	generateProjectionMatrix();
@@ -13,14 +13,14 @@ PBRRenderer::PBRRenderer(glm::ivec2 screenSize, Camera& mainCamera)
 	pbrShader.addShader(GL_VERTEX_SHADER, "modelView.vert");
 	pbrShader.addShader(GL_FRAGMENT_SHADER, "pbr.frag");
 
-	pbrShader.linkProgram();
-
 	unlitShader.addShader(GL_VERTEX_SHADER, "modelView.vert");
 	unlitShader.addShader(GL_FRAGMENT_SHADER, "unlit.frag");
 
 	depthCubemapShader.addShader(GL_VERTEX_SHADER, "model.vert");
 	depthCubemapShader.addShader(GL_GEOMETRY_SHADER, "depthShader.geom");
 	depthCubemapShader.addShader(GL_FRAGMENT_SHADER, "depthShader.frag");
+
+	depthPrepassShader.addShader(GL_VERTEX_SHADER, "modelView.vert");
 
 	glGenBuffers(1, &lightBuffer);
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, lightBuffer);
@@ -33,6 +33,7 @@ PBRRenderer::PBRRenderer(glm::ivec2 screenSize, Camera& mainCamera)
 	glGenFramebuffers(1, &depthMapFBO);
 
 	sphere = Model::constructUnitSphere(16, 16);
+	quad = Model::constructUnitQuad();
 }
 
 PBRRenderer::~PBRRenderer()
@@ -75,10 +76,34 @@ void PBRRenderer::frame()
 	if (flags[SHADOWS_ENABLED])
 		renderShadowMaps(lights);
 
+	// Depth prepass
 	glViewport(0, 0, dimensions.x, dimensions.y);
 
+	glClear(GL_DEPTH_BUFFER_BIT);
+
+	if (flags[DEPTH_PREPASS_ENABLED])
+	{
+		depthPrepassShader.use();
+
+		depthPrepassShader.setMat4("uProjection", projectionMatrix);
+		depthPrepassShader.setMat4("uView", camera.getViewMatrix());
+		depthPrepassShader.setVec3("uCameraPosition", camera.getEye());
+
+		for (size_t i = 0; i < scene->sceneModels.size(); i++)
+		{
+			depthPrepassShader.setInt("uJointsOffset", jointOffsets[i]);
+
+			for (const auto& prim : scene->sceneModels[i]->getPrimitives())
+			{
+				renderPrimitive(prim, depthPrepassShader);
+			}
+		}
+	}
+
+	//
+
 	glClearColor(0.15f, 0.15f, 0.15f, 1.0f);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glClear(GL_COLOR_BUFFER_BIT);
 
 	pbrShader.use();
 
@@ -88,7 +113,6 @@ void PBRRenderer::frame()
 
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, lightBuffer);
 	glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(ShaderLight) * lights.size(), lights.data(), GL_STATIC_DRAW);
-
 
 	pbrShader.setBool("uShadowsEnabled", flags[SHADOWS_ENABLED]);
 
@@ -163,16 +187,6 @@ void PBRRenderer::loadScene(std::shared_ptr<Scene> s)
 		GL_TEXTURE_CUBE_MAP_ARRAY, 0, GL_DEPTH_COMPONENT,
 		shadowMapDimensions.x, shadowMapDimensions.x, 6 * scene->sceneLights.size(), 0,
 		GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
-
-	//size_t maxNumBones = std::accumulate(scene->sceneModels.begin(), scene->sceneModels.end(), 0,
-	//	[](size_t max, const std::shared_ptr<Model> m)
-	//	{
-	//		return std::max(max, m->getJoints().size());
-	//	}
-	//);
-
-	//glBindBuffer(GL_SHADER_STORAGE_BUFFER, jointsBuffer);
-	//glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(glm::mat4) * maxNumBones, nullptr, GL_STATIC_DRAW);
 }
 
 void PBRRenderer::clearScene()
@@ -181,6 +195,7 @@ void PBRRenderer::clearScene()
 	scene->sceneLights.clear();
 
 	glDeleteFramebuffers(1, &depthMapFBO);
+	//glDeleteFramebuffers(1, &depthPrepassFBO);
 	glDeleteTextures(1, &depthCubemapArray);
 	glDeleteBuffers(1, &lightBuffer);
 }
@@ -196,12 +211,6 @@ void PBRRenderer::setFlag(const int flag, bool value)
 void PBRRenderer::resize(glm::ivec2 screenSize)
 {
 	dimensions = screenSize;
-	generateProjectionMatrix();
-}
-
-void PBRRenderer::setCamera(const Camera& cam)
-{
-	camera = cam;
 	generateProjectionMatrix();
 }
 

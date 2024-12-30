@@ -23,7 +23,7 @@ struct Light
 class PBRRenderer
 {
 public:
-	PBRRenderer(glm::ivec2 screenSize, Camera& camera);
+	PBRRenderer(glm::ivec2 screenSize, const Camera& camera);
 	~PBRRenderer();
 
 	// No copy/move
@@ -45,8 +45,9 @@ private:
 	ShaderProgram pbrShader;
 	ShaderProgram unlitShader;
 	ShaderProgram depthCubemapShader;
+	ShaderProgram depthPrepassShader;
 
-	Camera& camera;
+	const Camera& camera;
 
 	std::vector<bool> flags = std::vector<bool>(NUM_FLAGS, true);
 
@@ -58,6 +59,7 @@ private:
 	glm::mat4 projectionMatrix;
 
 	std::shared_ptr<Model> sphere;
+	std::shared_ptr<Model> quad;
 
 	struct ShaderLight
 	{
@@ -74,7 +76,6 @@ private:
 	GLuint jointsBuffer;
 
 	GLuint depthMapFBO;
-
 	GLuint depthCubemapArray;
 
 public:
@@ -82,6 +83,7 @@ public:
 		NORMALS_ENABLED,
 		OCCLUSION_ENABLED,
 		SHADOWS_ENABLED,
+		DEPTH_PREPASS_ENABLED,
 		NUM_FLAGS
 	};
 
@@ -89,7 +91,6 @@ public:
 	bool getFlag(const int flag) const { return flags[flag]; }
 
 	void resize(glm::ivec2 screenSize);
-	void setCamera(const Camera& camera);
 
 private:
 	void generateProjectionMatrix();

@@ -126,7 +126,7 @@ void main()
 	vec4 baseColour = uBaseColour.factor;
 	if (uBaseColour.isTextureEnabled)
 	{
-		baseColour *= vec4(texture(uBaseColour.textureMap, vTexCoords).xyz, 1.0);
+		baseColour *= texture(uBaseColour.textureMap, vTexCoords);
 	}
 
 	float roughness = uMetallicRoughness.factor.g;
@@ -186,7 +186,7 @@ void main()
 		float attenuation = 1.0;
 
 		float lightDistance = length(bLights[i].position - vWorldPos);
-		attenuation /= (lightDistance * lightDistance);
+		attenuation /= (lightDistance * lightDistance); // ? + (2 * lightDistance) + 1;
 		
 		vec3 radiance = bLights[i].colour * bLights[i].strength * attenuation;
 

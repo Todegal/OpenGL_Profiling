@@ -7,10 +7,22 @@
 InputHandler::InputHandler(GLFWwindow* window)
 	: windowPtr(window)
 {
+	mousePos = glm::ivec2(0, 0);
+	oldMousePos = mousePos;
 }
 
 void InputHandler::pollInputs()
 {
+	double x, y;
+	glfwGetCursorPos(windowPtr, &x, &y);
+
+	int w, h;
+	glfwGetFramebufferSize(windowPtr, &w, &h);
+
+	oldMousePos = mousePos;
+	mousePos = { x / static_cast<float>(w), y / static_cast<float>(h) };
+
+
 	pollAxes();
 	pollActions();
 	pollToggles();

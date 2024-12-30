@@ -20,6 +20,7 @@
 #include <glm/gtc/random.hpp>
 #include <glm/gtx/string_cast.hpp>
 
+#include "characterController.h"
 #include "inputHandler.h"
 #include "model.h"
 #include "orbitCamera.h"
@@ -115,30 +116,36 @@ int main()
 
 	glEnable(GL_FRAMEBUFFER_SRGB);
 
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
 	glViewport(0, 0, WIDTH, HEIGHT);
 
-	OrbitCamera camera(
-		{ 0, 0, 0 },
-		{ 0, 1, 0 },
-		2.5f, 1.0f,
-		glm::radians(-90.0f), glm::radians(40.0f)
-	);
+	InputHandler input(window);
+	input.defineToggle("toggleOcclusion", { GLFW_KEY_O });
+	input.defineToggle("toggleNormals", { GLFW_KEY_N });
+	input.defineToggle("toggleShadows", { GLFW_KEY_M });
+	input.defineToggle("toggleDPP", { GLFW_KEY_P });
+	input.defineAction("rotate", {}, { GLFW_MOUSE_BUTTON_LEFT });
+	input.defineAction("pan", { GLFW_KEY_LEFT_SHIFT });
+	input.defineAction("zoom", { }, { GLFW_MOUSE_BUTTON_RIGHT });
 
-	PBRRenderer renderer({ WIDTH, HEIGHT }, camera);
+	OrbitCamera camera(
+		glm::vec3(0.0f),
+		glm::vec3(0.0f, 1.0f, 0.0f),
+		5.0f, 0.2f, 0.0f, glm::quarter_pi<float>()
+	);
+		
+
+	PBRRenderer renderer(glm::ivec2( WIDTH, HEIGHT ), camera);
 
 	std::vector<std::shared_ptr<Model>> models;
-	const auto m = std::make_shared<Model>("..//Models//Dummy//Dummy.glb", "mixamorig:Hips");
-	models.push_back(m);
-
-	camera.setViewPoint(m->getTransform()->translation + glm::vec3(0, 2, 0));
-
-	models[0]->selectAnimation("idle");
-
-	//models.push_back(Model::constructUnitQuad());
-	//models[1]->getTransform()->rotation = glm::quat(glm::radians(glm::vec3(-90, 0, 0)));
-	//models[1]->getTransform()->scale *= 100;
 
 	models.push_back(std::make_shared<Model>("C:/Users/Niall Townley/Documents/Source/Viper/Models/Sponza/glTF/Sponza.gltf"));
+
+	//models.push_back(Model::constructUnitQuad());
+	//models[1]->getTransform()->rotation = glm::angleAxis(glm::radians(-90.0f), glm::vec3(1, 0, 0));
+	//models[1]->getTransform()->scale = glm::vec3(10.0f);
 
 	std::vector<Light> lights;
 	lights.push_back(
@@ -149,7 +156,7 @@ int main()
 		}
 	);
 
-	int nLights = 4;
+	int nLights = 10;
 
 	for (size_t i = 0; i < nLights; i++)
 	{
@@ -165,7 +172,6 @@ int main()
 		);
 	}
 
-
 	std::shared_ptr<Scene> scene = std::make_shared<Scene>();
 
 	scene->sceneLights = lights;
@@ -175,54 +181,13 @@ int main()
 
 	struct UserPointer
 	{
-		double x, y, lastX, lastY;
-		bool rotate = false;
-		OrbitCamera* cameraPtr;
 		PBRRenderer* rendererPtr;
+		float scroll = 0.0f;
 	} userPtr;
 
-	userPtr.cameraPtr = &camera;
 	userPtr.rendererPtr = &renderer;
 
 	glfwSetWindowUserPointer(window, &userPtr);
-
-	glfwSetMouseButtonCallback(window, [](GLFWwindow* window, int button, int action, int mods)
-		{
-			auto data = reinterpret_cast<UserPointer*>(glfwGetWindowUserPointer(window));
-
-			if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
-			{
-				glfwGetCursorPos(window, &data->x, &data->y);
-
-				data->lastX = data->x;
-				data->lastY = data->y;
-
-				data->rotate = !data->rotate;
-			}
-
-			if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_RELEASE)
-			{
-				data->rotate = false;
-			}
-		});
-
-	glfwSetCursorPosCallback(window, [](GLFWwindow* window, double xpos, double ypos) 
-		{
-			auto data = reinterpret_cast<UserPointer*>(glfwGetWindowUserPointer(window));
-
-			if (data->rotate)
-			{
-				data->x = xpos; data->y = ypos;
-			}
-		});
-
-	glfwSetScrollCallback(window, [](GLFWwindow* window, double xoffset, double yoffset) 
-		{
-			auto data = reinterpret_cast<UserPointer*>(glfwGetWindowUserPointer(window));
-
-			data->cameraPtr->zoom(static_cast<float>(yoffset));
-
-		});
 
 	glfwSetFramebufferSizeCallback(window, [](GLFWwindow* window, int width, int height) 
 		{
@@ -231,19 +196,13 @@ int main()
 			data->rendererPtr->resize({ width < 1 ? 1 : width, height < 1 ? 1 : height });
 		});
 
-	InputHandler input(window);
-	input.defineToggle("toggleOcclusion", { GLFW_KEY_O });
-	input.defineToggle("toggleNormals", { GLFW_KEY_N });
-	input.defineToggle("toggleShadows", { GLFW_KEY_M });
+	glfwSetScrollCallback(window, [](GLFWwindow* window, double _, double y)
+		{
+			UserPointer* data = reinterpret_cast<UserPointer*>(glfwGetWindowUserPointer(window));
 
-	input.defineAxis("forward", { GLFW_KEY_W }, 1.0f);
-	input.defineAxis("forward", { GLFW_KEY_S }, -1.0f);
+			data->scroll = static_cast<float>(y);
+		});
 
-	input.defineAxis("right", { GLFW_KEY_D }, 1.0f);
-	input.defineAxis("right", { GLFW_KEY_A }, -1.0f);
-
-	input.defineAction("sprint", { GLFW_KEY_LEFT_SHIFT });
-	input.defineAction("jump", { GLFW_KEY_SPACE });
 
 	glm::mat4 projectionMatrix = glm::perspective(90.0f, static_cast<float>(WIDTH) / static_cast<float>(HEIGHT), 0.00001f, 10000.0f);
 
@@ -251,9 +210,26 @@ int main()
 	{
 		t.tick();
 
+		userPtr.scroll = 0.0f;
+
 		glfwPollEvents();
 
 		input.pollInputs();
+
+		const auto& offset = input.getMouseOffset();
+		
+		if (input.getAction("rotate") && input.getAction("pan"))
+		{
+			camera.moveHorizontal(-offset.x * 5.0f);
+			camera.moveVertical(offset.y * 5.0f);
+		}
+		else if (input.getAction("rotate"))
+		{
+			camera.rotateAzimuth(offset.x * 10.0f);
+			camera.rotatePolar(offset.y * 10.0f);
+		}
+		
+		camera.zoom(userPtr.scroll * 5.0f);
 
 		renderer.setFlag(PBRRenderer::OCCLUSION_ENABLED, !input.getToggle("toggleOcclusion"));
 
@@ -261,62 +237,8 @@ int main()
 
 		renderer.setFlag(PBRRenderer::SHADOWS_ENABLED, !input.getToggle("toggleShadows"));
 
-		if (input.getAxis("forward") != 0.0f && input.getAction("sprint"))
-		{
-			models[0]->selectAnimation("run", 0.2f, true);
-		}
-		else if (input.getAxis("forward") != 0.0f)
-		{
-			models[0]->selectAnimation("walk", 0.2f, true);
-		}
-		else if (input.getAxis("forward") == 0.0f
-			&& input.getAxis("right") != 0.0f
-			&& input.getAction("sprint"))
-		{
-			models[0]->selectAnimation(input.getAxis("right") > 0.0f ? "strafe_run_right" : "strafe_run_left", 0.2f, true);
-		}
-		else if (input.getAxis("forward") == 0.0f
-			&& input.getAxis("right") != 0.0f)
-		{
-			models[0]->selectAnimation(input.getAxis("right") > 0.0f ? "strafe_right" : "strafe_left", 0.2f, true);
-		}
-		else
-		{
-			models[0]->selectAnimation("idle", 0.3f);
-		}
+		renderer.setFlag(PBRRenderer::DEPTH_PREPASS_ENABLED, !input.getToggle("toggleDPP"));
 
-		scene->sceneLights[0].position = glm::vec3(
-			glm::sin(t.getTimeElapsed<Timer::f_seconds>().count()),
-			1,
-			glm::cos(t.getTimeElapsed<Timer::f_seconds>().count())
-		);
-
-		// Move Camera
-		if (userPtr.x != userPtr.lastX || userPtr.y != userPtr.lastY)
-		{
-			float dx = static_cast<float>(userPtr.x - userPtr.lastX) / static_cast<float>(WIDTH);
-			float dy = static_cast<float>(userPtr.y - userPtr.lastY) / static_cast<float>(HEIGHT);
-
-			if (userPtr.rotate)
-			{
-				camera.rotateAzimuth(dx * 10.0f);
-				camera.rotatePolar(dy * 10.0f);
-			}
-
-			userPtr.lastX = userPtr.x; userPtr.lastY = userPtr.y;
-		}
-
-		models[0]->advanceAnimation(t.getDeltaTime<Timer::f_seconds>().count());
-
-		camera.setViewPoint(models[0]->getTransform()->getWorldPosition() + glm::vec3(0, 1, 0));
-
-		models[0]->getTransform()->translation += glm::vec3(
-			models[0]->getVelocity().x * t.getDeltaTime<Timer::f_seconds>().count(),
-			0.0f,
-			models[0]->getVelocity().z * input.getAxis("forward") * t.getDeltaTime<Timer::f_seconds>().count()
-		);
-
-		
 		renderer.frame();
 
 		glfwSwapBuffers(window);

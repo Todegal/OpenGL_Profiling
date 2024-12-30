@@ -141,6 +141,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\..\shared\GLAD\src\glad.c" />
+    <ClCompile Include="characterController.cpp" />
     <ClCompile Include="inputHandler.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="model.cpp" />
@@ -156,15 +157,18 @@
     </Text>
   </ItemGroup>
   <ItemGroup>
+    <None Include="debugDepth.frag" />
     <None Include="depthShader.frag" />
     <None Include="depthShader.geom" />
     <None Include="model.vert" />
     <None Include="pbr.frag" />
+    <None Include="screenQuad.vert" />
     <None Include="unlit.frag" />
     <None Include="vertex_shared.glsl" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="camera.h" />
+    <ClInclude Include="characterController.h" />
     <ClInclude Include="inputHandler.h" />
     <ClInclude Include="model.h" />
     <ClInclude Include="orbitCamera.h" />

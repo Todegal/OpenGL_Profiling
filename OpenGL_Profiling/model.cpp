@@ -17,7 +17,7 @@ void Model::selectAnimation(std::string animationName, float blendDuration, bool
 	}
 
 	// don't change animation if it's the same as the one currently playing!
-	if (animationName == currentAnimation || nextAnimation == animationName)
+	if (currentAnimation == animationName || nextAnimation == animationName)
 		return;
 
 	// If there is currently an animation selected, start the new one at a proportional time

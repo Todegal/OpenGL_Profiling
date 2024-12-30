@@ -4,6 +4,8 @@
 #include <vector>
 #include <unordered_map>
 
+#include <glm/glm.hpp>
+
 struct GLFWwindow;
 
 class InputHandler
@@ -54,6 +56,12 @@ private:
 
 	std::unordered_map<std::string, ToggleMapping> toggles;
 
+	glm::vec2 mousePos;
+	glm::vec2 oldMousePos;
+
+	float scroll;
+	void setScrollOffset(float s) { scroll = s; }
+
 public:
 	void defineAxis(const std::string& name, const std::vector<int>& keys = { }, float scale = 1.0f);
 	float getAxis(const std::string& name);
@@ -63,4 +71,9 @@ public:
 
 	void defineToggle(const std::string& name, const std::vector<int>& keys = { }, const std::vector<int>& mouseButtons = { });
 	bool getToggle(const std::string& name);
+
+	const glm::vec2 getMousePos() const { return mousePos;	};
+	const glm::vec2 getMouseOffset() const { return mousePos - oldMousePos; }
+
+	const float getScrollOffset() const { return scroll; }
 };
