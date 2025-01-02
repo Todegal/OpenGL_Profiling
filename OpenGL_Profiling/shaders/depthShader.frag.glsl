@@ -4,13 +4,13 @@ in vec4 vFragPos;
 
 uniform vec3 uLightPos;
 
-uniform float uDepth;
+uniform float uShadowMapDepth;
 
 void main()
 {
     float lightDistance = abs(length(vFragPos.xyz - uLightPos));
     
-    lightDistance = lightDistance / uDepth;
+    lightDistance = lightDistance / uShadowMapDepth;
     
     gl_FragDepth = lightDistance;
 }

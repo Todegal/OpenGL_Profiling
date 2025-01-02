@@ -101,7 +101,11 @@ class Model
 {
 private: // Containers
 	std::vector<GLuint> buffers; 
-	std::vector<MeshPrimitive> primitives; 
+	std::vector<MeshPrimitive> primitives;
+
+	std::vector<MeshPrimitive> opaquePrimitives;
+	std::vector<MeshPrimitive> translucentPrimitives;
+
 	std::vector<GLuint> textures;
 
 	std::shared_ptr<TransformNode> transformation;
@@ -148,6 +152,9 @@ public:
 	static std::shared_ptr<Model> constructUnitQuad();
 
 	std::vector<MeshPrimitive>& getPrimitives() { return primitives; }
+	std::vector<MeshPrimitive>& getOpaquePrimitives() { return opaquePrimitives; }
+	std::vector<MeshPrimitive>& getTranslucentPrimitives() { return translucentPrimitives; }
+
 
 	const std::vector<GLuint>& getTextures() const { return textures; }
 

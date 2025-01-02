@@ -69,7 +69,7 @@ public:
 	void defineAction(const std::string& name, const std::vector<int>& keys = { }, const std::vector<int>& mouseButtons = { });
 	bool getAction(const std::string& name);
 
-	void defineToggle(const std::string& name, const std::vector<int>& keys = { }, const std::vector<int>& mouseButtons = { });
+	void defineToggle(const std::string& name, const std::vector<int>& keys = { }, const std::vector<int>& mouseButtons = { }, bool initialValue = false);
 	bool getToggle(const std::string& name);
 
 	const glm::vec2 getMousePos() const { return mousePos;	};

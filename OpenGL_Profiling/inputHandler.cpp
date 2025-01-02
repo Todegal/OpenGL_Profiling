@@ -152,12 +152,12 @@ bool InputHandler::getAction(const std::string& name)
 	return false;
 }
 
-void InputHandler::defineToggle(const std::string& name, const std::vector<int>& keys, const std::vector<int>& mouseButtons)
+void InputHandler::defineToggle(const std::string& name, const std::vector<int>& keys, const std::vector<int>& mouseButtons, bool initialValue)
 {
 	ToggleMapping map;
 	map.keys = keys;
 	map.mouseButtons = mouseButtons;
-	map.state = false;
+	map.state = initialValue;
 
 	toggles[name] = map;
 }

@@ -63,6 +63,16 @@ public:
 		setMat3(name, glm::value_ptr(value));
 	}
 
+	inline void setVec2(const std::string& name, const float* data) const
+	{
+		glUniform2fv(glGetUniformLocation(programId, name.c_str()), 1, data);
+	}
+
+	inline void setVec2(const std::string& name, const glm::vec2& value) const
+	{
+		setVec2(name, glm::value_ptr(value));
+	}
+
 	inline void setVec3(const std::string& name, const float* data) const
 	{
 		glUniform3fv(glGetUniformLocation(programId, name.c_str()), 1, data);

@@ -812,6 +812,11 @@ void Model::loadPrimitive(const tinygltf::Model& model, const tinygltf::Primitiv
 
 	meshPrimitive.transform = transformNode;
 
+	if (meshPrimitive.materialDesc.alphaMode == "OPAQUE")
+		opaquePrimitives.push_back(meshPrimitive);
+	else
+		translucentPrimitives.push_back(meshPrimitive);
+
 	primitives.push_back(meshPrimitive);
 }
 

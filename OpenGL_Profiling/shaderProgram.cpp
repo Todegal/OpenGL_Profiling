@@ -39,7 +39,6 @@ void ShaderProgram::addShader(GLenum type, const std::filesystem::path& shaderPa
 	std::string shaderCode;
 	std::ifstream shaderFile;
 
-	//shaderFile.exceptions(std::ifstream::failbit | std::ifstream::badbit);
     try
     {
         shaderFile.open(shaderPath);
@@ -114,7 +113,8 @@ bool ShaderProgram::compileShader(GLuint shader, const std::filesystem::path& sh
         infoLog.resize(logSize);
         glGetShaderInfoLog(shader, logSize, NULL, infoLog.data());
 
-        spdlog::error("Failed to compile shader: {} \n\n\n{}", shaderPath.string(), infoLog);
+        spdlog::critical("Failed to compile shader: {} \n\n\n{}", shaderPath.string(), infoLog);
+        return false;
     };
 
     return static_cast<bool>(success);

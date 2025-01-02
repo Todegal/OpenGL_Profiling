@@ -53,33 +53,48 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <Text Include="modelView.vert">
+    <Text Include="shaders\modelView.vert.glsl">
       <Filter>Shaders</Filter>
     </Text>
   </ItemGroup>
   <ItemGroup>
-    <None Include="unlit.frag">
+    <None Include="shaders\unlit.frag.glsl">
       <Filter>Shaders</Filter>
     </None>
-    <None Include="pbr.frag">
+    <None Include="shaders\pbr.frag.glsl">
       <Filter>Shaders</Filter>
     </None>
-    <None Include="depthShader.geom">
+    <None Include="shaders\depthShader.geom.glsl">
       <Filter>Shaders</Filter>
     </None>
-    <None Include="depthShader.frag">
+    <None Include="shaders\depthShader.frag.glsl">
       <Filter>Shaders</Filter>
     </None>
-    <None Include="model.vert">
+    <None Include="shaders\model.vert.glsl">
       <Filter>Shaders</Filter>
     </None>
-    <None Include="vertex_shared.glsl">
+    <None Include="shaders\vertex_shared.glsl">
       <Filter>Shaders</Filter>
     </None>
-    <None Include="screenQuad.vert">
+    <None Include="shaders\screenQuad.vert.glsl">
       <Filter>Shaders</Filter>
     </None>
-    <None Include="debugDepth.frag">
+    <None Include="shaders\gBuffer.frag.glsl">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="shaders\fragment_shared.glsl">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="shaders\pbr_functions.glsl">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="shaders\deferredShader.frag.glsl">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="shaders\instancedModelView.vert.glsl">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="shaders\hdr.frag.glsl">
       <Filter>Shaders</Filter>
     </None>
   </ItemGroup>

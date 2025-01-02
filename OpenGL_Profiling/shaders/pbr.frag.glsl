@@ -1,23 +1,16 @@
 #version 460
 
-in vec3 vWorldPos;
-in vec3 vNormal;
-in vec2 vTexCoords;
+#include "fragment_shared.glsl"
 
-struct MaterialInput 
-{
-	bool isTextureEnabled;
-	sampler2D textureMap;
-	vec4 factor;
-};
+#include "pbr_functions.glsl"
 
 uniform MaterialInput uBaseColour;
 uniform MaterialInput uMetallicRoughness;
 uniform MaterialInput uNormal;
 uniform MaterialInput uOcclusion;
 
-uniform samplerCubeArray uDepthMaps;
-uniform float uDepth;
+uniform samplerCubeArray uShadowMaps;
+uniform float uShadowMapDepth;
 uniform bool uShadowsEnabled;
 const int NUM_SHADOW_SAMPLES = 20;
 
@@ -39,11 +32,6 @@ uniform vec3 uCameraPosition;
 
 out vec4 vFragColour;
 
-// Proprietary functions 
-
-const float PI = 3.14159265359;
-const float INV_PI = (1.0 / PI);
-
 const vec3 sampleOffsetDirections[20] = vec3[]
 (
    vec3( 1,  1,  1), vec3( 1, -1,  1), vec3(-1, -1,  1), vec3(-1,  1,  1), 
@@ -52,74 +40,6 @@ const vec3 sampleOffsetDirections[20] = vec3[]
    vec3( 1,  0,  1), vec3(-1,  0,  1), vec3( 1,  0, -1), vec3(-1,  0, -1),
    vec3( 0,  1,  1), vec3( 0, -1,  1), vec3( 0, -1, -1), vec3( 0,  1, -1)
 ); 
-
-// https://knarkowicz.wordpress.com/2016/01/06/aces-filmic-tone-mapping-curve/
-vec3 ACESFilm(vec3 x)
-{
-	float a = 2.51f;
-	float b = 0.03f;
-	float c = 2.43f;
-	float d = 0.59f;
-	float e = 0.14f;
-	return clamp((x*(a*x+b))/(x*(c*x+d)+e), 0.0, 1.0);
-}
-
-float D_GGX(float NoH, float roughness)
-{
-	float a = NoH * roughness;
-    float k = roughness / (1.0 - NoH * NoH + a * a);
-    return k * k * INV_PI;
-}
-
-vec3 F_Schlick(float cosTheta, vec3 F0)
-{
-    float f = pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
-    return f + F0 * (1.0 - f);
-} 
-
-float F_Schlick(float cosTheta, float F0, float F90)
-{
-	return F0 + (F90 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
-}
-
-vec3 F_Schlick(float cosTheta, vec3 F0, float roughness)
-{
-    return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
-}   
-
-float V_SmithGGXCorrelated(float NoV, float NoL, float a) {
-    float a2 = a * a;
-    float GGXL = NoV * sqrt((-NoL * a2 + NoL) * NoL + a2);
-    float GGXV = NoL * sqrt((-NoV * a2 + NoV) * NoV + a2);
-    return 0.5 / (GGXV + GGXL);
-}
-
-float Fd_Burley(float NoV, float NoL, float LoH, float roughness) {
-    float f90 = 0.5 + 2.0 * roughness * LoH * LoH;
-    float lightScatter = F_Schlick(NoL, 1.0, f90);
-    float viewScatter = F_Schlick(NoV, 1.0, f90);
-    return lightScatter * viewScatter * INV_PI;
-}
-
-float Fd_Lambert()
-{
-	return INV_PI;
-}
-
-mat3 getTBN()
-{
-    vec3 Q1 = dFdx(vWorldPos);
-    vec3 Q2 = dFdy(vWorldPos);
-    vec2 st1 = dFdx(vTexCoords);
-    vec2 st2 = dFdy(vTexCoords);
-
-    vec3 N = normalize(vNormal);
-    vec3 T = normalize(Q1*st2.t - Q2*st1.t);
-    vec3 B = -normalize(cross(N, T));
-    mat3 TBN = mat3(T, B, N);
-	
-	return TBN;
-}
 
 void main()
 {
@@ -191,20 +111,21 @@ void main()
 		vec3 radiance = bLights[i].colour * bLights[i].strength * attenuation;
 
 		// Shadow Mapping
-		vec3 invLightVector = vWorldPos - bLights[i].position;
-		float currentDepth = length(invLightVector);
 	
 		float shadow = 0.0;
 
 		if (uShadowsEnabled) 
 		{
-			float bias = 0.000001;
+			vec3 invLightVector = vWorldPos - bLights[i].position;
+			float currentDepth = length(invLightVector);
+
+			float bias = 0.01;
 
 			float viewDistance = length(uCameraPosition - vWorldPos);
 			float diskRadius = 0.0015; 
 			for (int j = 0; j < NUM_SHADOW_SAMPLES; j++)
 			{
-				float closestDepth = texture(uDepthMaps, vec4(invLightVector + sampleOffsetDirections[j] * diskRadius, i)).r * uDepth;
+				float closestDepth = texture(uShadowMaps, vec4(invLightVector + sampleOffsetDirections[j] * diskRadius, i)).r * uShadowMapDepth;
 				if (currentDepth - bias > closestDepth)
 				{
 					shadow += 1.0;
@@ -225,5 +146,5 @@ void main()
 		colour = mix(colour, colour * texture(uOcclusion.textureMap, vTexCoords).r, uOcclusion.factor.r);
 	}
 
-	vFragColour = vec4(ACESFilm(colour), baseColour.a);
+	vFragColour = vec4(colour, baseColour.a);
 }

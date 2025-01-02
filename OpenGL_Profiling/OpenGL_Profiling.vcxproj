@@ -152,19 +152,24 @@
     <ClCompile Include="timer.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <Text Include="modelView.vert">
+    <Text Include="shaders\modelView.vert.glsl">
       <FileType>Document</FileType>
     </Text>
   </ItemGroup>
   <ItemGroup>
-    <None Include="debugDepth.frag" />
-    <None Include="depthShader.frag" />
-    <None Include="depthShader.geom" />
-    <None Include="model.vert" />
-    <None Include="pbr.frag" />
-    <None Include="screenQuad.vert" />
-    <None Include="unlit.frag" />
-    <None Include="vertex_shared.glsl" />
+    <None Include="shaders\hdr.frag.glsl" />
+    <None Include="shaders\instancedModelView.vert.glsl" />
+    <None Include="shaders\deferredShader.frag.glsl" />
+    <None Include="shaders\depthShader.frag.glsl" />
+    <None Include="shaders\depthShader.geom.glsl" />
+    <None Include="shaders\fragment_shared.glsl" />
+    <None Include="shaders\gBuffer.frag.glsl" />
+    <None Include="shaders\model.vert.glsl" />
+    <None Include="shaders\pbr.frag.glsl" />
+    <None Include="shaders\pbr_functions.glsl" />
+    <None Include="shaders\screenQuad.vert.glsl" />
+    <None Include="shaders\unlit.frag.glsl" />
+    <None Include="shaders\vertex_shared.glsl" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="camera.h" />
