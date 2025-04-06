@@ -47,12 +47,18 @@ void main()
 		normalVector = normalize(getTBN() * scaledNormal);
 	}
 
-	float occlusion = 0.0;
+	// colour 	= mix(colour, colour * texture(uOcclusion.textureMap, vTexCoords).r, uOcclusion.factor.r);
+	// 		 	= colour * ( 1 - factor ) + ( colour * occlusion_map ) * factor
+	// 			= K * (1 - f) + K * (M * f)
+	//			= K * ((1 - f) + (M * f))
 
+	float occlusion = 1.0;
 	if (uOcclusion.isTextureEnabled)
 	{
-		occlusion = texture(uOcclusion.textureMap, vTexCoords).a * uOcclusion.factor.r;
+		occlusion = (1 - uOcclusion.factor.r) + (texture(uOcclusion.textureMap, vTexCoords).r * uOcclusion.factor.r);
 	}
+	
+	occlusion = clamp(occlusion, 0, 1);
 
 	// Pack the G-Buffer
 	g0 = vec4(vWorldPos.xyz, metallic);

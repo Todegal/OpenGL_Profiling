@@ -19,6 +19,9 @@
     <Filter Include="Shaders">
       <UniqueIdentifier>{298cd989-c101-4417-9171-a68ecfbcbbcb}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Dependencies\imgui">
+      <UniqueIdentifier>{f904ee55-0137-4ea1-b4c8-8f2e41158782}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -51,17 +54,47 @@
     <ClCompile Include="characterController.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\Dependencies\imgui-docking\imgui.cpp">
+      <Filter>Dependencies\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Dependencies\imgui-docking\imgui_demo.cpp">
+      <Filter>Dependencies\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Dependencies\imgui-docking\imgui_draw.cpp">
+      <Filter>Dependencies\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Dependencies\imgui-docking\imgui_tables.cpp">
+      <Filter>Dependencies\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Dependencies\imgui-docking\imgui_widgets.cpp">
+      <Filter>Dependencies\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Dependencies\imgui-docking\misc\cpp\imgui_stdlib.cpp">
+      <Filter>Dependencies\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Dependencies\imgui-docking\backends\imgui_impl_glfw.cpp">
+      <Filter>Dependencies\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Dependencies\imgui-docking\backends\imgui_impl_opengl3.cpp">
+      <Filter>Dependencies\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="imguiWindows.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="animationController.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Text Include="shaders\modelView.vert.glsl">
       <Filter>Shaders</Filter>
     </Text>
+    <Text Include="shaders\pbr.frag.glsl">
+      <Filter>Shaders</Filter>
+    </Text>
   </ItemGroup>
   <ItemGroup>
     <None Include="shaders\unlit.frag.glsl">
-      <Filter>Shaders</Filter>
-    </None>
-    <None Include="shaders\pbr.frag.glsl">
       <Filter>Shaders</Filter>
     </None>
     <None Include="shaders\depthShader.geom.glsl">
@@ -97,6 +130,18 @@
     <None Include="shaders\hdr.frag.glsl">
       <Filter>Shaders</Filter>
     </None>
+    <None Include="..\Dependencies\imgui-docking\misc\debuggers\imgui.natstepfilter">
+      <Filter>Dependencies\imgui</Filter>
+    </None>
+    <None Include="shaders\backgroundCube.vert.glsl">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="shaders\buildCubemap.frag.glsl">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="shaders\cubemapShader.geom.glsl">
+      <Filter>Shaders</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="model.h">
@@ -123,5 +168,49 @@
     <ClInclude Include="characterController.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\Dependencies\imgui-docking\imconfig.h">
+      <Filter>Dependencies\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Dependencies\imgui-docking\imgui.h">
+      <Filter>Dependencies\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Dependencies\imgui-docking\imgui_internal.h">
+      <Filter>Dependencies\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Dependencies\imgui-docking\imstb_rectpack.h">
+      <Filter>Dependencies\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Dependencies\imgui-docking\imstb_textedit.h">
+      <Filter>Dependencies\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Dependencies\imgui-docking\imstb_truetype.h">
+      <Filter>Dependencies\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Dependencies\imgui-docking\misc\cpp\imgui_stdlib.h">
+      <Filter>Dependencies\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Dependencies\imgui-docking\backends\imgui_impl_glfw.h">
+      <Filter>Dependencies\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Dependencies\imgui-docking\backends\imgui_impl_opengl3.h">
+      <Filter>Dependencies\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Dependencies\imgui-docking\backends\imgui_impl_opengl3_loader.h">
+      <Filter>Dependencies\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="imguiWindows.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="animationController.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="transform.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Natvis Include="..\Dependencies\imgui-docking\misc\debuggers\imgui.natvis">
+      <Filter>Dependencies\imgui</Filter>
+    </Natvis>
   </ItemGroup>
 </Project>

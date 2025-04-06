@@ -27,6 +27,8 @@ private:
 	{
 		std::vector<int> keys;
 		std::vector<int> mouseButtons;
+		std::vector<int> gamepadButtons;
+
 
 		bool state = false;
 	};
@@ -34,6 +36,7 @@ private:
 	struct AxisMapping
 	{
 		std::vector<int> keys;
+		std::vector<int> gamepadAxis;
 		std::string axis;
 
 		float scale = 1.0f;
@@ -63,10 +66,12 @@ private:
 	void setScrollOffset(float s) { scroll = s; }
 
 public:
-	void defineAxis(const std::string& name, const std::vector<int>& keys = { }, float scale = 1.0f);
+	void defineAxis(const std::string& name, const std::vector<int>& keys = { }, 
+		const std::vector<int>& gamepadAxis = { },  float scale = 1.0f);
 	float getAxis(const std::string& name);
 
-	void defineAction(const std::string& name, const std::vector<int>& keys = { }, const std::vector<int>& mouseButtons = { });
+	void defineAction(const std::string& name, const std::vector<int>& keys = { }, 
+		const std::vector<int>& mouseButtons = { }, const std::vector<int>& gamepadButtons = { });
 	bool getAction(const std::string& name);
 
 	void defineToggle(const std::string& name, const std::vector<int>& keys = { }, const std::vector<int>& mouseButtons = { }, bool initialValue = false);

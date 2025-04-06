@@ -9,8 +9,8 @@ uniform MaterialInput uMetallicRoughness;
 uniform MaterialInput uNormal;
 uniform MaterialInput uOcclusion;
 
-uniform samplerCubeArray uShadowMaps;
-uniform float uShadowMapDepth;
+uniform samplerCubeArrayShadow uShadowMaps;
+uniform vec2 uShadowMapViewPlanes;
 uniform bool uShadowsEnabled;
 const int NUM_SHADOW_SAMPLES = 20;
 
@@ -74,6 +74,7 @@ void main()
 
 	float NoV = abs(dot(normalVector, viewVector)) + 1e-5;
 	
+	
 	vec3 diffuseColor = (1 - metallic) * baseColour.rgb;
 
 	float reflectance = 0.5;
@@ -119,17 +120,15 @@ void main()
 			vec3 invLightVector = vWorldPos - bLights[i].position;
 			float currentDepth = length(invLightVector);
 
-			float bias = 0.01;
-
 			float viewDistance = length(uCameraPosition - vWorldPos);
 			float diskRadius = 0.0015; 
 			for (int j = 0; j < NUM_SHADOW_SAMPLES; j++)
 			{
-				float closestDepth = texture(uShadowMaps, vec4(invLightVector + sampleOffsetDirections[j] * diskRadius, i)).r * uShadowMapDepth;
-				if (currentDepth - bias > closestDepth)
-				{
-					shadow += 1.0;
-				}
+				vec3 offset = sampleOffsetDirections[j % 20] * (1.0 + (float(j) / float(NUM_SHADOW_SAMPLES)));
+				vec3 cubemapUVW = invLightVector + offset * diskRadius;
+
+				float z = (currentDepth - uShadowMapViewPlanes.x) / (uShadowMapViewPlanes.y - uShadowMapViewPlanes.x);
+				shadow += texture(uShadowMaps, vec4(cubemapUVW, i), z - shadowBias);
 			}
 			
 			shadow /= float(NUM_SHADOW_SAMPLES);

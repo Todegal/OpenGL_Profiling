@@ -4,6 +4,7 @@
 #include "model.h"
 #include "scene.h"
 #include "shaderProgram.h"
+#include "imguiWindows.h"
 
 struct PBRRenderFlags
 {
@@ -42,33 +43,18 @@ public:
 private:
 	std::shared_ptr<Scene> scene;
 
-	ShaderProgram forwardPassShader;
+private: // SHADERS
 
-	ShaderProgram unlitShader;
-	ShaderProgram depthCubemapShader;
-	ShaderProgram depthPrepassShader;
-
-	ShaderProgram deferredPassShader;
-	ShaderProgram gBufferShader;
-
-	ShaderProgram hdrPassShader;
-
-	float lightCutoff = 1.0f / 1024.0f;
+	const float lightCutoff = 1.0f / 1024.0f;
 
 	const Camera& camera;
-
-	std::vector<bool> flags = std::vector<bool>(NUM_FLAGS, true);
-
-	float shadowNearPlane = 0.01f;
-	float shadowFarPlane = 100.0f;
-	glm::ivec2 shadowMapDimensions = { 2048, 2048 };
 
 	glm::ivec2 dimensions;
 	glm::mat4 projectionMatrix;
 
-	std::shared_ptr<Model> sphere;
-	std::shared_ptr<Model> quad;
-	std::shared_ptr<Model> cube;
+	const std::shared_ptr<Model> sphere;
+	const std::shared_ptr<Model> quad;
+	const std::shared_ptr<Model> cube;
 
 	struct ShaderLight
 	{
@@ -78,60 +64,96 @@ private:
 		float strength; // 4 bytes
 	};
 
+	ShaderProgram depthPrepassShader;
+	ShaderProgram forwardPassShader;
+	ShaderProgram unlitShader;
+
 	GLuint lightBuffer;
 
 	std::vector<int> jointOffsets;
 	GLuint jointsBuffer;
 
+	const int environmentMapDimensions = 1024;
+	GLuint environmentMap;
+
+	ShaderProgram backgroundShader;
+
+	const float shadowNearPlane = 0.1f;
+	const float shadowFarPlane = 10.0f;
+	const int shadowMapDimensions = 2048;
+
+	ShaderProgram shadowMapShader;
 	GLuint shadowMapFBO;
 	GLuint shadowCubemapArray;
 
+	ShaderProgram deferredPassShader;
+	ShaderProgram gBufferShader;
 	GLuint gBufferFBO;
 	std::vector<GLuint> gBufferTextures;
 	GLuint gBufferDepth;
 
+	ShaderProgram hdrPassShader;
 	GLuint hdrPassFBO;
 	GLuint hdrPassColour;
 	GLuint hdrPassDepthRBO;
 
 public:
 	enum {
-		NORMALS_ENABLED,
+		NORMALS_ENABLED = 0,
 		OCCLUSION_ENABLED,
 		SHADOWS_ENABLED,
+		ENVIRONMENT_MAP_ENABLED,
 		DEPTH_PREPASS_ENABLED,
 		DEFERRED_PASS_ENABLED,
 		HDR_PASS_ENABLED,
 		NUM_FLAGS
 	};
 
+private:
+	std::array<bool, NUM_FLAGS> flags;
+
+public:
+
 	void setFlag(const int flag, bool value);
 	bool getFlag(const int flag) const { return flags[flag]; }
+
+	void drawFlagsDialog(imgui_data data);
 
 	void resize(glm::ivec2 screenSize);
 
 private:
 	void generateProjectionMatrix();
 	
-	void renderPrimitive(const MeshPrimitive& prim, ShaderProgram program);
+	void renderPrimitive(const MeshPrimitive& prim, ShaderProgram& program);
 
-	void loadMaterialProperties(const std::vector<GLuint>& textures, const tinygltf::Material& materialDesc, ShaderProgram shader);
+	void loadMaterialProperties(const std::vector<GLuint>& textures, const tinygltf::Material& materialDesc, ShaderProgram& shader);
 
-	void renderShadowMaps(const std::vector<ShaderLight>& lights);
+private: // RENDER PASSES
 
-	// Deferred Pass
+	void loadEnvironmentMap();
+
+
+	void initializeShadowMaps();
+	void resizeShadowMaps();
+	void buildShadowMaps(const std::vector<ShaderLight>& lights);
+	void cleanShadowMaps();
+
+
 	void initializeDeferredPass();
 	void resizeDeferredPass();
 	void buildGBuffer();
 	void deferredPass(const std::vector<ShaderLight>& lights);
+	void cleanDeferredPass();
 
 
 	void initializeForwardPass();
 	void resizeForwardPass();
 	void forwardPass(const std::vector<ShaderLight>& lights);
+	void cleanForwardPass();
 
 
 	void initializeHdrPass();
 	void resizeHdrPass();
 	void hdrPass();
+	void cleanHdrPass();
 };

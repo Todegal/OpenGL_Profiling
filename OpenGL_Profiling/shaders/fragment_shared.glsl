@@ -25,3 +25,5 @@ struct MaterialInput
     vec4 factor;
 };
 
+const float shadowBias = 0.0001;
+

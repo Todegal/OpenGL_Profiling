@@ -2,10 +2,12 @@
 
 #include <GLFW/glfw3.h>
 
+#include <spdlog/spdlog.h>
+
 #include <algorithm>
 
 InputHandler::InputHandler(GLFWwindow* window)
-	: windowPtr(window)
+	: windowPtr(window), scroll(0.0f)
 {
 	mousePos = glm::ivec2(0, 0);
 	oldMousePos = mousePos;
@@ -21,7 +23,6 @@ void InputHandler::pollInputs()
 
 	oldMousePos = mousePos;
 	mousePos = { x / static_cast<float>(w), y / static_cast<float>(h) };
-
 
 	pollAxes();
 	pollActions();
@@ -43,6 +44,22 @@ void InputHandler::pollAxes()
 			if (glfwGetKey(windowPtr, k) != GLFW_RELEASE)
 			{
 				mod += map.scale;
+			}
+		}
+
+		for (const auto x : map.gamepadAxis)
+		{
+			if (glfwJoystickPresent(GLFW_JOYSTICK_1) &&
+				glfwJoystickIsGamepad(GLFW_JOYSTICK_1))
+			{
+				GLFWgamepadstate state;
+				if (glfwGetGamepadState(GLFW_JOYSTICK_1, &state))
+				{
+					if (std::abs(state.axes[x]) > 0.01f)
+					{
+						mod += map.scale * state.axes[x];
+					}
+				}
 			}
 		}
 
@@ -68,6 +85,22 @@ void InputHandler::pollActions()
 			if (glfwGetMouseButton(windowPtr, m) != GLFW_RELEASE)
 			{
 				value = true;
+			}
+		}
+
+		for (const auto g : map.gamepadButtons)
+		{
+			if (glfwJoystickPresent(GLFW_JOYSTICK_1) &&
+				glfwJoystickIsGamepad(GLFW_JOYSTICK_1))
+			{
+				GLFWgamepadstate state;
+				if (glfwGetGamepadState(GLFW_JOYSTICK_1, &state))
+				{
+					if (state.buttons[g] != GLFW_RELEASE)
+					{
+						value = true;
+					}
+				}
 			}
 		}
 
@@ -111,11 +144,13 @@ void InputHandler::pollToggles()
 	}
 }
 
-void InputHandler::defineAxis(const std::string& name, const std::vector<int>& keys, float scale)
+void InputHandler::defineAxis(const std::string& name, const std::vector<int>& keys, 
+	const std::vector<int>& gamepadAxis, float scale)
 {
 	AxisMapping map;
 	map.axis = name;
 	map.keys = keys;
+	map.gamepadAxis = gamepadAxis;
 	map.scale = scale;
 
 	axesMappings.push_back(map);
@@ -134,11 +169,13 @@ float InputHandler::getAxis(const std::string& name)
 	return 0.0f;
 }
 
-void InputHandler::defineAction(const std::string& name, const std::vector<int>& keys, const std::vector<int>& mouseButtons)
+void InputHandler::defineAction(const std::string& name, const std::vector<int>& keys, 
+	const std::vector<int>& mouseButtons, const std::vector<int>& gamepadButtons)
 {
 	ActionMapping map;
 	map.keys = keys;
 	map.mouseButtons = mouseButtons;
+	map.gamepadButtons = gamepadButtons;
 	map.state = false;
 
 	actions[name] = map;

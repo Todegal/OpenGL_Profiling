@@ -71,11 +71,11 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>C:\Users\Niall Townley\Documents\Source\shared\stb;C:\Users\Niall Townley\Documents\Source\shared\spdlog\include;C:\Users\Niall Townley\Documents\Source\shared\glm;C:\Users\Niall Townley\Documents\Source\shared\GLFW\include;C:\Users\Niall Townley\Documents\Source\shared\GLAD\include;$(IncludePath)</IncludePath>
+    <IncludePath>C:\Users\Niall Townley\Documents\Source\shared\stb;C:\Users\Niall Townley\Documents\Source\shared\spdlog\include;C:\Users\Niall Townley\Documents\Source\shared\glm;C:\Users\Niall Townley\Documents\Source\shared\GLFW\include;C:\Users\Niall Townley\Documents\Source\shared\GLAD\include;C:\Users\Niall Townley\Documents\Source\OpenGL_Profiling\Dependencies\imgui-docking\;C:\Users\Niall Townley\Documents\Source\OpenGL_Profiling\Dependencies\imgui-docking\backends;$(IncludePath)</IncludePath>
     <LibraryPath>C:\Users\Niall Townley\Documents\Source\shared\spdlog\build\$(Configuration)\;C:\Users\Niall Townley\Documents\Source\shared\GLFW\lib-vc2022;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <IncludePath>C:\Users\Niall Townley\Documents\Source\shared\stb;C:\Users\Niall Townley\Documents\Source\shared\spdlog\include;C:\Users\Niall Townley\Documents\Source\shared\glm;C:\Users\Niall Townley\Documents\Source\shared\GLFW\include;C:\Users\Niall Townley\Documents\Source\shared\GLAD\include;$(IncludePath)</IncludePath>
+    <IncludePath>C:\Users\Niall Townley\Documents\Source\shared\stb;C:\Users\Niall Townley\Documents\Source\shared\spdlog\include;C:\Users\Niall Townley\Documents\Source\shared\glm;C:\Users\Niall Townley\Documents\Source\shared\GLFW\include;C:\Users\Niall Townley\Documents\Source\shared\GLAD\include;C:\Users\Niall Townley\Documents\Source\OpenGL_Profiling\Dependencies\imgui-docking\;C:\Users\Niall Townley\Documents\Source\OpenGL_Profiling\Dependencies\imgui-docking\backends;$(IncludePath)</IncludePath>
     <LibraryPath>C:\Users\Niall Townley\Documents\Source\shared\spdlog\build\$(Configuration)\;C:\Users\Niall Townley\Documents\Source\shared\GLFW\lib-vc2022;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -110,7 +110,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions); _SILENCE_ALL_MS_EXT_DEPRECATION_WARNINGS</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
@@ -127,7 +127,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions); _SILENCE_ALL_MS_EXT_DEPRECATION_WARNINGS</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
@@ -141,7 +141,17 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\..\shared\GLAD\src\glad.c" />
+    <ClCompile Include="..\Dependencies\imgui-docking\backends\imgui_impl_glfw.cpp" />
+    <ClCompile Include="..\Dependencies\imgui-docking\backends\imgui_impl_opengl3.cpp" />
+    <ClCompile Include="..\Dependencies\imgui-docking\imgui.cpp" />
+    <ClCompile Include="..\Dependencies\imgui-docking\imgui_demo.cpp" />
+    <ClCompile Include="..\Dependencies\imgui-docking\imgui_draw.cpp" />
+    <ClCompile Include="..\Dependencies\imgui-docking\imgui_tables.cpp" />
+    <ClCompile Include="..\Dependencies\imgui-docking\imgui_widgets.cpp" />
+    <ClCompile Include="..\Dependencies\imgui-docking\misc\cpp\imgui_stdlib.cpp" />
+    <ClCompile Include="animationController.cpp" />
     <ClCompile Include="characterController.cpp" />
+    <ClCompile Include="imguiWindows.cpp" />
     <ClCompile Include="inputHandler.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="model.cpp" />
@@ -157,6 +167,10 @@
     </Text>
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\Dependencies\imgui-docking\misc\debuggers\imgui.natstepfilter" />
+    <None Include="shaders\backgroundCube.vert.glsl" />
+    <None Include="shaders\buildCubemap.frag.glsl" />
+    <None Include="shaders\cubemapShader.geom.glsl" />
     <None Include="shaders\hdr.frag.glsl" />
     <None Include="shaders\instancedModelView.vert.glsl" />
     <None Include="shaders\deferredShader.frag.glsl" />
@@ -165,21 +179,40 @@
     <None Include="shaders\fragment_shared.glsl" />
     <None Include="shaders\gBuffer.frag.glsl" />
     <None Include="shaders\model.vert.glsl" />
-    <None Include="shaders\pbr.frag.glsl" />
+    <Text Include="shaders\pbr.frag.glsl">
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</DeploymentContent>
+      <FileType>Document</FileType>
+    </Text>
     <None Include="shaders\pbr_functions.glsl" />
     <None Include="shaders\screenQuad.vert.glsl" />
     <None Include="shaders\unlit.frag.glsl" />
     <None Include="shaders\vertex_shared.glsl" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\Dependencies\imgui-docking\backends\imgui_impl_glfw.h" />
+    <ClInclude Include="..\Dependencies\imgui-docking\backends\imgui_impl_opengl3.h" />
+    <ClInclude Include="..\Dependencies\imgui-docking\backends\imgui_impl_opengl3_loader.h" />
+    <ClInclude Include="..\Dependencies\imgui-docking\imconfig.h" />
+    <ClInclude Include="..\Dependencies\imgui-docking\imgui.h" />
+    <ClInclude Include="..\Dependencies\imgui-docking\imgui_internal.h" />
+    <ClInclude Include="..\Dependencies\imgui-docking\imstb_rectpack.h" />
+    <ClInclude Include="..\Dependencies\imgui-docking\imstb_textedit.h" />
+    <ClInclude Include="..\Dependencies\imgui-docking\imstb_truetype.h" />
+    <ClInclude Include="..\Dependencies\imgui-docking\misc\cpp\imgui_stdlib.h" />
+    <ClInclude Include="animationController.h" />
     <ClInclude Include="camera.h" />
     <ClInclude Include="characterController.h" />
+    <ClInclude Include="imguiWindows.h" />
     <ClInclude Include="inputHandler.h" />
     <ClInclude Include="model.h" />
     <ClInclude Include="orbitCamera.h" />
     <ClInclude Include="scene.h" />
     <ClInclude Include="shaderProgram.h" />
     <ClInclude Include="timer.h" />
+    <ClInclude Include="transform.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <Natvis Include="..\Dependencies\imgui-docking\misc\debuggers\imgui.natvis" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -4,20 +4,20 @@
 
 #include <spdlog/spdlog.h>
 
+#include <stb_image.h>
+
 #include <algorithm>
 #include <numeric>
+#include <execution>
 
 PBRRenderer::PBRRenderer(glm::ivec2 screenSize, const Camera& mainCamera)
-	: dimensions(screenSize), camera(mainCamera)
+	: dimensions(screenSize), camera(mainCamera), sphere(Model::constructUnitSphere(16, 16)), quad(Model::constructUnitQuad()),
+	cube(Model::constructUnitCube())
 {
 	generateProjectionMatrix();
 
 	unlitShader.addShader(GL_VERTEX_SHADER, "shaders/modelView.vert.glsl");
 	unlitShader.addShader(GL_FRAGMENT_SHADER, "shaders/unlit.frag.glsl");
-
-	depthCubemapShader.addShader(GL_VERTEX_SHADER, "shaders/model.vert.glsl");
-	depthCubemapShader.addShader(GL_GEOMETRY_SHADER, "shaders/depthShader.geom.glsl");
-	depthCubemapShader.addShader(GL_FRAGMENT_SHADER, "shaders/depthShader.frag.glsl");
 
 	depthPrepassShader.addShader(GL_VERTEX_SHADER, "shaders/modelView.vert.glsl");
 
@@ -29,24 +29,51 @@ PBRRenderer::PBRRenderer(glm::ivec2 screenSize, const Camera& mainCamera)
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, jointsBuffer);
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, jointsBuffer);
 
-	glGenFramebuffers(1, &shadowMapFBO);
-
-	sphere = Model::constructUnitSphere(16, 16);
-	quad = Model::constructUnitQuad();
-	cube = Model::constructUnitCube();
-
+	initializeShadowMaps();
 	initializeDeferredPass();
 	initializeForwardPass();
 	initializeHdrPass();
+
+	flags[NORMALS_ENABLED] = true;
+	flags[SHADOWS_ENABLED] = false;
+	flags[ENVIRONMENT_MAP_ENABLED] = false;
+	flags[HDR_PASS_ENABLED] = true;
 }
 
 PBRRenderer::~PBRRenderer()
 {
 	clearScene();
+
+	cleanShadowMaps();
+	cleanDeferredPass();
+	cleanForwardPass();
+	cleanHdrPass();
+}
+
+void PBRRenderer::loadScene(std::shared_ptr<Scene> s)
+{
+	scene = s;
+
+	resizeShadowMaps();
+
+	if (scene->enviromentMap != "")
+	{
+		loadEnvironmentMap();
+	}
+}
+
+void PBRRenderer::clearScene()
+{
+	scene->sceneModels.clear();
+	scene->sceneLights.clear();
+
+	glDeleteBuffers(1, &lightBuffer);
+	glDeleteBuffers(1, &jointsBuffer);
 }
 
 void PBRRenderer::frame()
 {
+	// Parse lights, and calculate radii
 	std::vector<ShaderLight> lights(scene->sceneLights.size());
 	for (size_t i = 0; i < scene->sceneLights.size(); i++)
 	{
@@ -58,6 +85,10 @@ void PBRRenderer::frame()
 		};
 	}
 
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, lightBuffer);
+	glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(ShaderLight) * lights.size(), lights.data(), GL_STATIC_DRAW);
+
+	// Calculate all the joint matrices for all of the models
 	std::vector<glm::mat4> jointMatrices;
 	for (const auto& model : scene->sceneModels)
 	{
@@ -74,7 +105,7 @@ void PBRRenderer::frame()
 		}
 		
 		// while we're here let's sort all of the translucent meshes
-		std::sort(model->getTranslucentPrimitives().begin(), model->getTranslucentPrimitives().end(),
+		std::sort(std::execution::par, model->getTranslucentPrimitives().begin(), model->getTranslucentPrimitives().end(),
 			[&](const MeshPrimitive& a, const MeshPrimitive& b) -> bool {
 				const float aDist = glm::length2(camera.getEye() - a.transform->getWorldPosition());
 				const float bDist = glm::length2(camera.getEye() - b.transform->getWorldPosition());
@@ -85,26 +116,23 @@ void PBRRenderer::frame()
 
 	}
 
-	glBindBuffer(GL_SHADER_STORAGE_BUFFER, lightBuffer);
-	glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(ShaderLight) * lights.size(), lights.data(), GL_STATIC_DRAW);
-
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, jointsBuffer);
 	glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(glm::mat4) * jointMatrices.size(), jointMatrices.data(), GL_STATIC_DRAW);
 
 	if (flags[SHADOWS_ENABLED])
-		renderShadowMaps(lights);
+		buildShadowMaps(lights);
 	
 	glBindFramebuffer(GL_FRAMEBUFFER, flags[HDR_PASS_ENABLED] ? hdrPassFBO : 0);
 
 	glViewport(0, 0, dimensions.x, dimensions.y);
 
 	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glClear(GL_COLOR_BUFFER_BIT);
+	glClear(GL_DEPTH_BUFFER_BIT);
 
 	// Depth prepass
 
-	if (flags[DEPTH_PREPASS_ENABLED])
+	if (flags[DEPTH_PREPASS_ENABLED] && !flags[DEFERRED_PASS_ENABLED])
 	{
 		depthPrepassShader.use();
 
@@ -149,7 +177,7 @@ void PBRRenderer::frame()
 
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, sphereMesh.indicesBuffer);
 
-	// Render spheres for each light
+	// DEBUG : Render spheres for each light
 	for (const auto& light : scene->sceneLights)
 	{
 		glm::mat4 transform = glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(light.position)), glm::vec3(0.05f));
@@ -168,40 +196,37 @@ void PBRRenderer::frame()
 		
 	glBindVertexArray(0);
 
+	// Draw Background
+	if (flags[ENVIRONMENT_MAP_ENABLED])
+	{
+		glDisable(GL_CULL_FACE);
+
+		backgroundShader.use();
+
+		backgroundShader.setMat4("uProjection", projectionMatrix);
+		backgroundShader.setMat4("uView", camera.getViewMatrix());
+
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_CUBE_MAP, environmentMap);
+
+		backgroundShader.setBool("uEnvironmentMap", 0);
+
+		const auto& prim = cube->getPrimitives()[0];
+
+		glBindVertexArray(prim.vertexArray);
+
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, prim.indicesBuffer);
+
+		glDrawElements(prim.mode, static_cast<GLsizei>(prim.count), prim.componentType, (void*)0);
+
+		glBindVertexArray(0);
+
+		glEnable(GL_CULL_FACE);
+	}
+
 	// Run Post-Processing - currently just a HDR pass
 	if (flags[HDR_PASS_ENABLED])
 		hdrPass();
-}
-
-void PBRRenderer::loadScene(std::shared_ptr<Scene> s)
-{
-	scene = s;
-
-	glGenTextures(1, &shadowCubemapArray);
-	glBindTexture(GL_TEXTURE_CUBE_MAP_ARRAY, shadowCubemapArray);
-
-	glTexParameteri(GL_TEXTURE_CUBE_MAP_ARRAY, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP_ARRAY, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP_ARRAY, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-
-	glTexImage3D(
-		GL_TEXTURE_CUBE_MAP_ARRAY, 0, GL_DEPTH_COMPONENT,
-		shadowMapDimensions.x, shadowMapDimensions.x, 6 * scene->sceneLights.size(), 0,
-		GL_DEPTH_COMPONENT, GL_UNSIGNED_INT, 0);
-
-	glBindTexture(GL_TEXTURE_CUBE_MAP_ARRAY, 0);
-}
-
-void PBRRenderer::clearScene()
-{
-	scene->sceneModels.clear();
-	scene->sceneLights.clear();
-
-	glDeleteFramebuffers(1, &shadowMapFBO);
-	glDeleteTextures(1, &shadowCubemapArray);
-	glDeleteBuffers(1, &lightBuffer);
 }
 
 void PBRRenderer::setFlag(const int flag, bool value)
@@ -210,6 +235,26 @@ void PBRRenderer::setFlag(const int flag, bool value)
 	assert(flag < NUM_FLAGS);
 
 	flags[flag] = value;
+}
+
+void PBRRenderer::drawFlagsDialog(imgui_data data)
+{
+	int windowFlags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize;
+
+	if (!ImGui::Begin("PBR Renderer Flags", &data.showRenderFlags, windowFlags))
+	{
+		ImGui::End();
+		return;
+	}
+
+	ImGui::Checkbox("Occlusion:", &flags[OCCLUSION_ENABLED]);
+	ImGui::Checkbox("Shadows:", &flags[SHADOWS_ENABLED]);
+	ImGui::Checkbox("Environment:", &flags[ENVIRONMENT_MAP_ENABLED]);
+	ImGui::Separator();
+	ImGui::Checkbox("Deferred Pass:", &flags[DEFERRED_PASS_ENABLED]);
+	ImGui::Checkbox("HDR Pass:", &flags[HDR_PASS_ENABLED]);
+
+	ImGui::End();
 }
 
 void PBRRenderer::resize(glm::ivec2 screenSize)
@@ -231,7 +276,7 @@ void PBRRenderer::generateProjectionMatrix()
 	projectionMatrix = glm::perspective(glm::radians(camera.getFov()), aspectRatio, 0.1f, 1000.0f);
 }
 
-void PBRRenderer::renderPrimitive(const MeshPrimitive& prim, ShaderProgram program)
+void PBRRenderer::renderPrimitive(const MeshPrimitive& prim, ShaderProgram& program)
 {
 	program.setMat4("uModel", prim.transform->getWorldTransform());
 	glm::mat3 NM = prim.transform->getWorldTransform();
@@ -249,7 +294,7 @@ void PBRRenderer::renderPrimitive(const MeshPrimitive& prim, ShaderProgram progr
 	glBindVertexArray(0);
 }
 
-void PBRRenderer::loadMaterialProperties(const std::vector<GLuint>& textures, const tinygltf::Material& materialDesc, ShaderProgram shader)
+void PBRRenderer::loadMaterialProperties(const std::vector<GLuint>& textures, const tinygltf::Material& materialDesc, ShaderProgram& shader)
 {
 	const tinygltf::PbrMetallicRoughness& pbr = materialDesc.pbrMetallicRoughness;
 
@@ -312,7 +357,166 @@ void PBRRenderer::loadMaterialProperties(const std::vector<GLuint>& textures, co
 	}
 }
 
-void PBRRenderer::renderShadowMaps(const std::vector<ShaderLight>& lights)
+void PBRRenderer::loadEnvironmentMap()
+{
+	// Load the map into a 2d texture
+	stbi_set_flip_vertically_on_load(true);
+
+	int width, height, channels;
+	float* data = stbi_loadf(scene->enviromentMap.c_str(), &width, &height, &channels, 3);
+	if (!data || width + height < 2 || channels < 3)
+	{
+		spdlog::error("Failed to load environment map: {}", scene->enviromentMap);
+		flags[ENVIRONMENT_MAP_ENABLED] = false;
+		return;
+	}
+
+	GLuint equirectangularMap;
+	glGenTextures(1, &equirectangularMap);
+	glBindTexture(GL_TEXTURE_2D, equirectangularMap);
+
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, width, height, 0, GL_RGB, GL_FLOAT, data);
+
+	stbi_image_free(data);
+
+	glGenTextures(1, &environmentMap);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, environmentMap);
+
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
+	//glTexImage3D(GL_TEXTURE_CUBE_MAP, 0, GL_RGBA32F, 
+	//	environmentMapDimensions, environmentMapDimensions, 6, 
+	//	0, GL_RGBA, GL_FLOAT, 0);
+
+	for (size_t i = 0; i < 6; i++)
+	{
+		glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGBA32F,
+			environmentMapDimensions, environmentMapDimensions,
+			0, GL_RGBA, GL_FLOAT, nullptr);
+	}
+
+	glViewport(0, 0, environmentMapDimensions, environmentMapDimensions);
+
+	GLuint captureCubemapFBO;
+	glGenFramebuffers(1, &captureCubemapFBO);
+	glBindFramebuffer(GL_FRAMEBUFFER, captureCubemapFBO);
+
+	glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, environmentMap, 0);
+	glDrawBuffer(GL_COLOR_ATTACHMENT0);
+
+	assert(glIsTexture(environmentMap) == GL_TRUE);
+
+	GLenum e = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+	if (e != GL_FRAMEBUFFER_COMPLETE)
+	{
+		spdlog::critical("Failed to bind FBO!");
+		flags[ENVIRONMENT_MAP_ENABLED] = false;
+		return;
+	}
+
+	glDisable(GL_CULL_FACE);
+	glDisable(GL_DEPTH_TEST);
+
+	// test but let's see what happens
+	ShaderProgram buildCubemapShader;
+	buildCubemapShader.addShader(GL_VERTEX_SHADER, "shaders/screenQuad.vert.glsl");
+	buildCubemapShader.addShader(GL_GEOMETRY_SHADER, "shaders/cubemapShader.geom.glsl");
+	buildCubemapShader.addShader(GL_FRAGMENT_SHADER, "shaders/buildCubemap.frag.glsl");
+	
+	buildCubemapShader.use();
+
+	buildCubemapShader.setInt("uIndex", 0);
+
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, equirectangularMap);
+	buildCubemapShader.setInt("uEquirectangularMap", 0);
+	
+	const glm::mat4 projection = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 10.0f);
+	const std::vector<glm::mat4> views =
+	{
+	   glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(1.0f,  0.0f,  0.0f), glm::vec3(0.0f, -1.0f,  0.0f)),
+	   glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(-1.0f,  0.0f,  0.0f), glm::vec3(0.0f, -1.0f,  0.0f)),
+	   glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f,  1.0f,  0.0f), glm::vec3(0.0f,  0.0f,  1.0f)),
+	   glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f,  0.0f), glm::vec3(0.0f,  0.0f, -1.0f)),
+	   glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f,  0.0f,  1.0f), glm::vec3(0.0f, -1.0f,  0.0f)),
+	   glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f,  0.0f, -1.0f), glm::vec3(0.0f, -1.0f,  0.0f))
+	};
+
+	for (size_t i = 0; i < views.size(); i++)
+	{
+		buildCubemapShader.setMat4(std::format("uViewProjectMatrices[{}]", i), projection * views[i]);
+	}
+
+	glClear(GL_COLOR_BUFFER_BIT);
+
+	const auto& prim = cube->getPrimitives()[0];
+
+	glBindVertexArray(prim.vertexArray);
+
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, prim.indicesBuffer);
+
+	glDrawElements(prim.mode, static_cast<GLsizei>(prim.count), prim.componentType, (void*)0);
+
+	glBindVertexArray(0);
+
+	glEnable(GL_CULL_FACE);
+	glEnable(GL_DEPTH_TEST);
+
+	glDeleteTextures(1, &equirectangularMap);
+	glDeleteFramebuffers(1, &captureCubemapFBO);
+
+	backgroundShader.addShader(GL_VERTEX_SHADER, "shaders/backgroundCube.vert.glsl");
+	backgroundShader.addShader(GL_FRAGMENT_SHADER, "shaders/backgroundCube.frag.glsl");
+}
+
+void PBRRenderer::initializeShadowMaps()
+{
+	shadowMapShader.addShader(GL_VERTEX_SHADER, "shaders/model.vert.glsl");
+	shadowMapShader.addShader(GL_GEOMETRY_SHADER, "shaders/cubemapShader.geom.glsl");
+	shadowMapShader.addShader(GL_FRAGMENT_SHADER, "shaders/depthShader.frag.glsl");
+
+	glGenTextures(1, &shadowCubemapArray);
+	glBindTexture(GL_TEXTURE_CUBE_MAP_ARRAY, shadowCubemapArray);
+
+	glTexParameteri(GL_TEXTURE_CUBE_MAP_ARRAY, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP_ARRAY, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP_ARRAY, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
+	glTexParameteri(GL_TEXTURE_CUBE_MAP_ARRAY, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
+	glTexParameteri(GL_TEXTURE_CUBE_MAP_ARRAY, GL_TEXTURE_COMPARE_FUNC, GL_GEQUAL);
+
+	glTexImage3D(
+		GL_TEXTURE_CUBE_MAP_ARRAY, 0, GL_DEPTH_COMPONENT32F,
+		shadowMapDimensions, shadowMapDimensions, 0, 0,
+		GL_DEPTH_COMPONENT, GL_FLOAT, 0);
+
+	glGenFramebuffers(1, &shadowMapFBO);
+}
+
+void PBRRenderer::resizeShadowMaps()
+{
+	glBindTexture(GL_TEXTURE_CUBE_MAP_ARRAY, shadowCubemapArray);
+
+	glTexImage3D(
+		GL_TEXTURE_CUBE_MAP_ARRAY, 0, GL_DEPTH_COMPONENT32F,
+		shadowMapDimensions, shadowMapDimensions, 6 * scene->sceneLights.size(), 0,
+		GL_DEPTH_COMPONENT, GL_FLOAT, 0);
+
+	glBindTexture(GL_TEXTURE_CUBE_MAP_ARRAY, 0);
+}
+
+void PBRRenderer::buildShadowMaps(const std::vector<ShaderLight>& lights)
 {
 	glBindFramebuffer(GL_FRAMEBUFFER, shadowMapFBO);
 	glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, shadowCubemapArray, 0);
@@ -327,13 +531,13 @@ void PBRRenderer::renderShadowMaps(const std::vector<ShaderLight>& lights)
 		return;
 	}
 
-	glViewport(0, 0, shadowMapDimensions.x, shadowMapDimensions.y);
+	glViewport(0, 0, shadowMapDimensions, shadowMapDimensions);
 	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 	glClear(GL_DEPTH_BUFFER_BIT);
 
 	glCullFace(GL_FRONT);
 
-	depthCubemapShader.use();
+	shadowMapShader.use();
 
 	for (int i = 0; i < lights.size(); i++)
 	{
@@ -341,7 +545,7 @@ void PBRRenderer::renderShadowMaps(const std::vector<ShaderLight>& lights)
 		const glm::vec3 lightPosition = glm::vec3(light.position);
 
 		glm::mat4 shadowProj = glm::perspective(glm::radians(90.0f),
-			static_cast<float>(shadowMapDimensions.x) / static_cast<float>(shadowMapDimensions.y),
+			static_cast<float>(shadowMapDimensions) / static_cast<float>(shadowMapDimensions),
 			shadowNearPlane, shadowFarPlane);
 
 		std::vector<glm::mat4> shadowTransforms;
@@ -351,30 +555,35 @@ void PBRRenderer::renderShadowMaps(const std::vector<ShaderLight>& lights)
 		shadowTransforms.push_back(shadowProj * glm::lookAt(lightPosition, lightPosition + glm::vec3(0.0f, -1.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f)));
 		shadowTransforms.push_back(shadowProj * glm::lookAt(lightPosition, lightPosition + glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(0.0f, -1.0f, 0.0f)));
 		shadowTransforms.push_back(shadowProj * glm::lookAt(lightPosition, lightPosition + glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, -1.0f, 0.0f)));
-	
+
 		for (unsigned int j = 0; j < 6; ++j)
 		{
-			depthCubemapShader.setMat4(std::format("uShadowMatrices[{}]", j), shadowTransforms[j]);
+			shadowMapShader.setMat4(std::format("uViewProjectMatrices[{}]", j), shadowTransforms[j]);
 		}
 
-		depthCubemapShader.setFloat("uShadowMapDepth", (shadowFarPlane - shadowNearPlane));
-		depthCubemapShader.setInt("uIndex", i);
-		depthCubemapShader.setVec3("uLightPos", lightPosition);
+		shadowMapShader.setInt("uIndex", i);
+
+		shadowMapShader.setVec2("uShadowMapViewPlanes", { shadowNearPlane, shadowFarPlane });
+		shadowMapShader.setVec3("uLightPos", lightPosition);
 
 		for (size_t k = 0; k < scene->sceneModels.size(); k++)
 		{
-			//pbrShader.setInt("uJointsOffset", jointOffsets[k]);
-
 			const auto& model = scene->sceneModels[k];
 
 			for (const auto& prim : model->getPrimitives())
 			{
-				renderPrimitive(prim, depthCubemapShader);
+				renderPrimitive(prim, shadowMapShader);
 			}
 		}
 	}
 
 	glCullFace(GL_BACK);
+}
+
+void PBRRenderer::cleanShadowMaps()
+{
+	glDeleteTextures(1, &shadowCubemapArray);
+	glDeleteFramebuffers(1, &shadowMapFBO);
 }
 
 void PBRRenderer::initializeDeferredPass()
@@ -509,7 +718,8 @@ void PBRRenderer::deferredPass(const std::vector<ShaderLight>& lights)
 		glBindTexture(GL_TEXTURE_CUBE_MAP_ARRAY, shadowCubemapArray);
 
 		deferredPassShader.setInt("uShadowMaps", 5);
-		deferredPassShader.setFloat("uShadowMapDepth", shadowFarPlane - shadowNearPlane);
+
+		deferredPassShader.setVec2("uShadowMapViewPlanes", { shadowNearPlane, shadowFarPlane });
 	}
 
 	for (size_t i = 0; i < gBufferTextures.size(); i++)
@@ -521,6 +731,11 @@ void PBRRenderer::deferredPass(const std::vector<ShaderLight>& lights)
 	}
 
 	deferredPassShader.setVec2("uScreenDimensions", dimensions);
+
+	glActiveTexture(GL_TEXTURE6);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, environmentMap);
+
+	deferredPassShader.setInt("uEnvironmentMap", 6);
 
 	// New plan, instead of rendering a screen wide quad we're going to render a cube for each light 
 	// whose radius is the radius of the light, and only applying the lighting inside that cube
@@ -577,6 +792,13 @@ void PBRRenderer::deferredPass(const std::vector<ShaderLight>& lights)
 
 }
 
+void PBRRenderer::cleanDeferredPass()
+{
+	glDeleteTextures(gBufferTextures.size(), gBufferTextures.data());
+	glDeleteRenderbuffers(1, &gBufferDepth);
+	glDeleteFramebuffers(1, &gBufferFBO);
+}
+
 void PBRRenderer::initializeForwardPass()
 {
 	forwardPassShader.addShader(GL_VERTEX_SHADER, "shaders/modelView.vert.glsl");
@@ -604,16 +826,16 @@ void PBRRenderer::forwardPass(const std::vector<ShaderLight>& lights)
 		glBindTexture(GL_TEXTURE_CUBE_MAP_ARRAY, shadowCubemapArray);
 
 		forwardPassShader.setInt("uShadowMaps", 5);
-		forwardPassShader.setFloat("uShadowMapDepth", shadowFarPlane - shadowNearPlane);
+		forwardPassShader.setVec2("uShadowMapViewPlanes", { shadowNearPlane, shadowFarPlane });
 	}
 
-	for (size_t i = 0; i < scene->sceneModels.size(); i++)
+	// Render opaque primitives - only if there is no deferred pass running
+	if (!flags[DEFERRED_PASS_ENABLED])
 	{
-		forwardPassShader.setInt("uJointsOffset", jointOffsets[i]);
-		
-		// Render opaque primitives - only if there is no deferred pass running
-		if (!flags[DEFERRED_PASS_ENABLED])
+		for (size_t i = 0; i < scene->sceneModels.size(); i++)
 		{
+			forwardPassShader.setInt("uJointsOffset", jointOffsets[i]);
+		
 			for (const auto& prim : scene->sceneModels[i]->getOpaquePrimitives())
 			{
 				loadMaterialProperties(scene->sceneModels[i]->getTextures(), prim.materialDesc, forwardPassShader);
@@ -621,11 +843,16 @@ void PBRRenderer::forwardPass(const std::vector<ShaderLight>& lights)
 				renderPrimitive(prim, forwardPassShader);
 			}
 		}
+	}
 
-		// Enable blending and render the translucent primitives
+	// Enable blending and render the translucent primitives
 
-		glEnable(GL_BLEND);
-		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+	for (size_t i = 0; i < scene->sceneModels.size(); i++)
+	{
+		forwardPassShader.setInt("uJointsOffset", jointOffsets[i]);
 
 		for (const auto& prim : scene->sceneModels[i]->getTranslucentPrimitives())
 		{
@@ -634,8 +861,13 @@ void PBRRenderer::forwardPass(const std::vector<ShaderLight>& lights)
 			renderPrimitive(prim, forwardPassShader);
 		}
 
-		glDisable(GL_BLEND);
 	}
+		
+	glDisable(GL_BLEND);
+}
+
+void PBRRenderer::cleanForwardPass()
+{
 }
 
 void PBRRenderer::initializeHdrPass()
@@ -709,5 +941,12 @@ void PBRRenderer::hdrPass()
 	glBindVertexArray(0);
 
 	glEnable(GL_DEPTH_TEST);
+}
+
+void PBRRenderer::cleanHdrPass()
+{
+	glDeleteTextures(1, &hdrPassColour);
+	glDeleteRenderbuffers(1, &hdrPassDepthRBO);
+	glDeleteFramebuffers(1, &hdrPassFBO);
 }
 

@@ -7,37 +7,55 @@
 #include <iostream>
 #include <string>
 
-ShaderProgram::ShaderProgram(const std::filesystem::path& vertexShader, const std::filesystem::path& fragmentShader)
-	: programId(0), isLinked(false)
+ShaderProgram::ShaderProgram(const std::filesystem::path vertexShader, const std::filesystem::path fragmentShader)
+	: isLinked(false), recompileCount(0)
 {
 	addShader(GL_VERTEX_SHADER, vertexShader);
     addShader(GL_FRAGMENT_SHADER, fragmentShader);
+
+    programId = glCreateProgram();
 }
 
 ShaderProgram::ShaderProgram()
-    : programId(0), isLinked(false)
+    : isLinked(false), recompileCount(0)
 {
+    programId = glCreateProgram();
 }
 
 ShaderProgram::~ShaderProgram()
 {
     for (const auto& shader : shaders)
     {
-        glDeleteShader(shader);
+        glDeleteShader(shader.id);
     }
+
+    glDeleteProgram(programId);
 }
 
-void ShaderProgram::addShader(GLenum type, const std::filesystem::path& shaderPath)
+void ShaderProgram::addShader(GLenum stage, const std::filesystem::path shaderPath)
 {
     if (isLinked)
     {
-        spdlog::error("Unable to add shader to pre-linked shader program!");
+        isLinked = false;
     }
 
+    GLuint shaderId = glCreateShader(stage);
+
+    if (!compileShader(shaderId, shaderPath))
+    {
+        glDeleteShader(shaderId);
+        return;
+    }
+
+    shaders.push_back({ shaderId, shaderPath });
+}
+
+bool ShaderProgram::compileShader(GLuint shader, const std::filesystem::path shaderPath)
+{
     spdlog::trace("Loading shader file: {}", shaderPath.filename().string());
 
-	std::string shaderCode;
-	std::ifstream shaderFile;
+    std::string shaderCode;
+    std::ifstream shaderFile;
 
     try
     {
@@ -48,11 +66,11 @@ void ShaderProgram::addShader(GLenum type, const std::filesystem::path& shaderPa
         // #include -> works exactly like in c++
 
         std::string line;
-        while(std::getline(shaderFile, line))
+        while (std::getline(shaderFile, line))
         {
             if (line.starts_with("#include \""))
             {
-                std::string includeFile = 
+                std::string includeFile =
                     line.substr(line.find('"') + 1, line.find_last_of('"') - line.find('"') - 1);
 
                 std::filesystem::path includePath = shaderPath.parent_path() / includeFile;
@@ -84,22 +102,13 @@ void ShaderProgram::addShader(GLenum type, const std::filesystem::path& shaderPa
     {
         spdlog::error("Failed to load shader file: {}", shaderPath.filename().string());
         spdlog::error(e.what());
-        return;
+        return false;
     }
 
     const char* pshaderCode = shaderCode.c_str();
 
-    GLuint shaderId = glCreateShader(type);
-    glShaderSource(shaderId, 1, &pshaderCode, NULL);
-    
-    if (!compileShader(shaderId, shaderPath))
-        return;
+    glShaderSource(shader, 1, &pshaderCode, NULL);
 
-    shaders.push_back(shaderId);
-}
-
-bool ShaderProgram::compileShader(GLuint shader, const std::filesystem::path& shaderPath)
-{
     glCompileShader(shader);
 
     int success;
@@ -126,10 +135,9 @@ void ShaderProgram::linkProgram()
 
     if (shaders.size() < 1) return;
 
-    programId = glCreateProgram();
     for (const auto& shader : shaders)
     {
-        glAttachShader(programId, shader);
+        glAttachShader(programId, shader.id);
     }
 
     glLinkProgram(programId);
@@ -151,8 +159,30 @@ void ShaderProgram::linkProgram()
     isLinked = true;
 }
 
+void ShaderProgram::recompileProgram()
+{
+    isLinked = false;
+
+    for (const auto& shader : shaders)
+    {
+        glDetachShader(programId, shader.id);
+
+        if (!compileShader(shader.id, shader.path))
+        {
+            glDeleteShader(shader.id);
+            return;
+        }
+    }
+}
+
 void ShaderProgram::use()
 {
+    if (shouldRecompile > recompileCount)
+    {
+        recompileProgram();
+        recompileCount++;
+    }
+
     if (!isLinked)
         linkProgram();
 

@@ -2,15 +2,20 @@
 
 #include <functional>
 
+#include "timer.h"
 #include "camera.h"
 #include "inputHandler.h"
 #include "model.h"
+#include "imguiWindows.h"
+#include "animationController.h"
 
 class CharacterController
 {
 private:
 	InputHandler& input;
 	const std::shared_ptr<Model> characterModel;
+
+	AnimationController animControl;
 
 private:
 	class CharacterCamera : public Camera
@@ -44,7 +49,8 @@ public:
 	CharacterController(InputHandler& input, glm::vec3 startPos = { 0.0f, 0.0f, 0.0f });
 	~CharacterController();
 
-	void update(float dT);
+	void update(Timer::f_seconds dT);
+	void showInfo(imgui_data data);
 
 public:
 	const std::shared_ptr<Model> getModel() { return characterModel; }
@@ -55,8 +61,7 @@ public:
 		IDLE,
 		WALK,
 		SPRINT,
-		STRAFE,
-		STRAFE_RUN,
+		WALK_BACK,
 		TURN,
 		NUM_STATES
 	} state;
@@ -68,7 +73,5 @@ private:
 	CHARACTER_STATE idle(float dT);
 	CHARACTER_STATE walk(float dT);
 	CHARACTER_STATE sprint(float dt);
-	CHARACTER_STATE strafe(float dT);
-	CHARACTER_STATE strafeRun(float dt);
 	CHARACTER_STATE turn(float dt);
 };

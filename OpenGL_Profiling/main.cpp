@@ -1,3 +1,5 @@
+#define _SILENCE_ALL_MS_EXT_DEPRECATION_WARNINGS
+
 #include <memory>
 #include <algorithm>
 
@@ -20,6 +22,10 @@
 #include <glm/gtc/random.hpp>
 #include <glm/gtx/string_cast.hpp>
 
+#include "imgui.h"
+#include "imgui_impl_glfw.h"
+#include "imgui_impl_opengl3.h"
+
 #include "characterController.h"
 #include "inputHandler.h"
 #include "model.h"
@@ -27,6 +33,8 @@
 #include "pbrRenderer.h"
 #include "shaderProgram.h"
 #include "timer.h"
+
+#include "imguiWindows.h"
 
 constexpr int WIDTH = 1920 * 0.9;
 constexpr int HEIGHT = 1080 * 0.9;
@@ -62,7 +70,7 @@ int main()
 	Timer t;
 	t.start();
 
-	spdlog::set_level(spdlog::level::trace);
+	spdlog::set_level(spdlog::level::debug);
 
 	if (!glfwInit())
 	{
@@ -78,7 +86,7 @@ int main()
 
 	//glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
-	GLFWwindow* window = 
+	GLFWwindow* window =
 		glfwCreateWindow(WIDTH, HEIGHT, "-- OpenGL_Profiling --", nullptr, nullptr);
 
 	if (!window)
@@ -96,6 +104,20 @@ int main()
 
 		return EXIT_FAILURE;
 	}
+
+	// Setup Dear ImGui context
+	IMGUI_CHECKVERSION();
+	ImGui::CreateContext();
+	ImGuiIO& io = ImGui::GetIO();
+	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+	io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+	io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;         // IF using Docking Branch
+
+	// Setup Platform/Renderer backends
+	ImGui_ImplGlfw_InitForOpenGL(window, true);          // Second param install_callback=true will install GLFW callbacks and chain to existing ones.
+	ImGui_ImplOpenGL3_Init();
+
+	imgui_data imguiData;
 
 	// Successfully loaded OpenGL
 	spdlog::info("Loaded OpenGL {}.{}", GLVersion.major, GLVersion.minor);
@@ -115,49 +137,63 @@ int main()
 	glViewport(0, 0, WIDTH, HEIGHT);
 
 	InputHandler input(window);
-	input.defineToggle("toggleOcclusion", { GLFW_KEY_O }, {}, true);
-	input.defineToggle("toggleNormals", { GLFW_KEY_N }, {}, true);
-	input.defineToggle("toggleShadows", { GLFW_KEY_M }, {}, false);
-	input.defineToggle("toggleDPP", { GLFW_KEY_P }, {}, true);
-	input.defineToggle("toggleDeferredPass", { GLFW_KEY_D }, {}, true);
-	input.defineToggle("toggleHdrPass", { GLFW_KEY_H }, {}, true);
-
 
 	input.defineAction("rotate", {}, { GLFW_MOUSE_BUTTON_LEFT });
 	input.defineAction("pan", { GLFW_KEY_LEFT_SHIFT });
-	input.defineAction("zoom", { }, { GLFW_MOUSE_BUTTON_RIGHT });
 
-	OrbitCamera camera(
-		glm::vec3(0.0f),
-		glm::vec3(0.0f, 1.0f, 0.0f),
-		5.0f, 0.2f, 0.0f, glm::quarter_pi<float>()
-	);
-		
+	input.defineAction("recompile", { GLFW_KEY_R }, {});
 
-	PBRRenderer renderer(glm::ivec2( WIDTH, HEIGHT ), camera);
+	//OrbitCamera camera(
+	//	glm::vec3(0.0f),
+	//	glm::vec3(0.0f, 1.0f, 0.0f),
+	//	5.0f, 0.2f, 0.0f, glm::quarter_pi<float>()
+	//);
+
+	CharacterController character(input);
+
+	PBRRenderer renderer(glm::ivec2(WIDTH, HEIGHT), character.getCamera());
 
 	std::vector<std::shared_ptr<Model>> models;
 
-	models.push_back(std::make_shared<Model>("C:/Users/Niall Townley/Documents/Source/Viper/Models/Sponza/glTF/Sponza.gltf"));
+	models.push_back(character.getModel());
+	//models.push_back(std::make_shared<Model>("C:/Users/Niall Townley/Documents/Source/Viper/Models/Sponza/glTF/Sponza.gltf"));
 
 	//models.push_back(Model::constructUnitQuad());
-	//models[1]->getTransform()->rotation = glm::angleAxis(glm::radians(-90.0f), glm::vec3(1, 0, 0));
-	//models[1]->getTransform()->scale = glm::vec3(10.0f);
+	//models.back()->getTransform()->rotation = glm::angleAxis(glm::radians(-90.0f), glm::vec3(1, 0, 0));
+	//models.back()->getTransform()->scale = glm::vec3(10.0f);
+
+	models.push_back(std::make_shared<Model>("../Models/Board/Board.glb"));
 
 	std::vector<Light> lights;
 	lights.push_back(
 		{
-			{ 0, 1, 1 },
-			{ 1, 1, 1 },
-			2.0f
+			{ 1, 1, 0 },
+			{ 1, 0, 0 },
+			10.0f
 		}
 	);
 
-	int nLights = 5;
+	lights.push_back(
+		{
+			{ 0, 2, 0 },
+			{ 0, 1, 0 },
+			10.0f
+		}
+	);
+
+	lights.push_back(
+		{
+			{ 0, 1, 1 },
+			{ 0, 0, 1 },
+			10.0f
+		}
+	);
+
+	int nLights = 20;
 
 	for (size_t i = 0; i < nLights; i++)
 	{
-		glm::vec3 position = { glm::linearRand(-8.0f, 8.0f), glm::linearRand(0.2f, 10.0f), glm::linearRand(-4.0f, 4.0f) };
+		glm::vec3 position = { glm::linearRand(-2.0f, 2.0f), glm::linearRand(0.2f, 5.0f), glm::linearRand(-2.0f, 2.0f) };
 		glm::vec3 colour = { glm::linearRand(0.0f, 1.0f), glm::linearRand(0.0f, 1.0f), glm::linearRand(0.0f, 1.0f) };
 
 		lights.push_back(
@@ -173,6 +209,7 @@ int main()
 
 	scene->sceneLights = lights;
 	scene->sceneModels = models;
+	scene->enviromentMap = "C://Users/Niall Townley/Documents/Source/Viper/Environments/lake_pier_4k/lake_pier_4k.hdr";
 
 	renderer.loadScene(scene);
 
@@ -186,7 +223,7 @@ int main()
 
 	glfwSetWindowUserPointer(window, &userPtr);
 
-	glfwSetFramebufferSizeCallback(window, [](GLFWwindow* window, int width, int height) 
+	glfwSetFramebufferSizeCallback(window, [](GLFWwindow* window, int width, int height)
 		{
 			UserPointer* data = reinterpret_cast<UserPointer*>(glfwGetWindowUserPointer(window));
 
@@ -211,10 +248,21 @@ int main()
 
 		glfwPollEvents();
 
-		input.pollInputs();
+		// Start the Dear ImGui frame
+		ImGui_ImplOpenGL3_NewFrame();
+		ImGui_ImplGlfw_NewFrame();
+		ImGui::NewFrame();
 
-		const auto& offset = input.getMouseOffset();
-		
+		drawMenuBar(imguiData);
+		if (imguiData.showRenderFlags) { renderer.drawFlagsDialog(imguiData); }
+		if (imguiData.showMetrics) { metrics(t, imguiData); }
+		if (imguiData.showCharacterInfo) { character.showInfo(imguiData); }
+
+		if (!ImGui::GetIO().WantCaptureKeyboard && !ImGui::GetIO().WantCaptureMouse)
+			input.pollInputs();
+
+		/*const auto& offset = input.getMouseOffset();
+
 		if (input.getAction("rotate") && input.getAction("pan"))
 		{
 			camera.moveHorizontal(-offset.x * 5.0f);
@@ -225,25 +273,27 @@ int main()
 			camera.rotateAzimuth(offset.x * 10.0f);
 			camera.rotatePolar(offset.y * 10.0f);
 		}
-		
-		camera.zoom(userPtr.scroll * 5.0f);
 
-		renderer.setFlag(PBRRenderer::OCCLUSION_ENABLED, input.getToggle("toggleOcclusion"));
+		if (input.getAction("recompile"))
+		{
+			ShaderProgram::recompileAllPrograms();
+		}
 
-		renderer.setFlag(PBRRenderer::NORMALS_ENABLED, input.getToggle("toggleNormals"));
+		camera.zoom(userPtr.scroll * 5.0f);*/
 
-		renderer.setFlag(PBRRenderer::SHADOWS_ENABLED, input.getToggle("toggleShadows"));
-
-		renderer.setFlag(PBRRenderer::DEPTH_PREPASS_ENABLED, input.getToggle("toggleDPP"));
-
-		renderer.setFlag(PBRRenderer::DEFERRED_PASS_ENABLED, input.getToggle("toggleDeferredPass"));
-
-		renderer.setFlag(PBRRenderer::HDR_PASS_ENABLED, input.getToggle("toggleHdrPass"));
+		character.update(t.getDeltaTime<Timer::f_seconds>());
 
 		renderer.frame();
 
+		ImGui::Render();
+		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
 		glfwSwapBuffers(window);
 	}
+
+	ImGui_ImplOpenGL3_Shutdown();
+	ImGui_ImplGlfw_Shutdown();
+	ImGui::DestroyContext();
 
 	glfwDestroyWindow(window);
 

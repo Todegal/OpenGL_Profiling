@@ -10,10 +10,12 @@ uniform sampler2D g0; // Position.x		| Position.y	| Position.z	| MetallicMask
 uniform sampler2D g1; // Normal.x		| Normal.y		| Normal.z		| Roughness
 uniform sampler2D g2; // BaseColour.r	| BaseColour.g	| BaseColour.b	| AmbientOcllusion 
 
-uniform samplerCubeArray uShadowMaps;
-uniform float uShadowMapDepth;
+uniform samplerCubeArrayShadow uShadowMaps;
+uniform vec2 uShadowMapViewPlanes;
 uniform bool uShadowsEnabled;
-const int NUM_SHADOW_SAMPLES = 20;
+const int NUM_SHADOW_SAMPLES = 16;
+
+uniform samplerCube uEnvironmentMap;
 
 struct Light
 {
@@ -34,14 +36,28 @@ uniform vec2 uScreenDimensions;
 
 out vec4 vFragColour;
 
-const vec3 sampleOffsetDirections[20] = vec3[]
-(
-	vec3(1, 1, 1), vec3(1, -1, 1), vec3(-1, -1, 1), vec3(-1, 1, 1),
-	vec3(1, 1, -1), vec3(1, -1, -1), vec3(-1, -1, -1), vec3(-1, 1, -1),
-	vec3(1, 1, 0), vec3(1, -1, 0), vec3(-1, -1, 0), vec3(-1, 1, 0),
-	vec3(1, 0, 1), vec3(-1, 0, 1), vec3(1, 0, -1), vec3(-1, 0, -1),
-	vec3(0, 1, 1), vec3(0, -1, 1), vec3(0, -1, -1), vec3(0, 1, -1)
-);
+vec2 VogelDiskSample(int sampleIndex, int samplesCount, float phi)
+{
+    const float GoldenAngle = 2.4; // Define the constant for better practice
+
+    float r = sqrt(float(sampleIndex) + 0.5) / sqrt(float(samplesCount));
+    float theta = float(sampleIndex) * GoldenAngle + phi;
+
+    return vec2(r * cos(theta), r * sin(theta));
+}
+
+// https://www.shadertoy.com/view/ftKfzc
+float InterleavedGradientNoise(vec2 uv) {
+	// magic values are found by experimentation
+	uv += (vec2(47, 17) * 0.695);
+
+    vec3 magic = vec3( 0.06711056, 0.00583715, 52.9829189 );
+    
+    //https://juejin.cn/post/6844903687505068045
+    //vec3 magic = vec3( 12.9898, 78.233, 43758.5453123 );
+    
+    return fract(magic.z * fract(dot(uv, magic.xy)));
+}
 
 void main()
 {
@@ -63,8 +79,7 @@ void main()
 	float occlusion = buffer2.w;
 	
 	//
-
-	vec3 viewVector = normalize(uCameraPosition - worldPos);
+	vec3 viewVector = normalize(uCameraPosition - vWorldPos);
 	vec3 reflectionVector = reflect(-viewVector, normalVector);
 
 	float NoV = abs(dot(normalVector, viewVector)) + 1e-5;
@@ -76,34 +91,34 @@ void main()
 	//	vec3 F0 = vec3(0.04); // Assume constant F0 for dieletrics
 	vec3 F0 = 0.16 * reflectance * reflectance * (1.0 - metallic) + baseColour.rgb * metallic; // F0 is tinted for metallics
 
+	float gradientNoise = InterleavedGradientNoise(gl_FragCoord.xy);
+
 	// Reflectance
 	vec3 Lo = vec3(0.0);
 	for (int i = 0; i < uNumLights; i++)
 	{
-		vec3 lightVector = normalize(bLights[i].position - worldPos);
+		const vec3 lightVector = normalize(bLights[i].position - vWorldPos);
 
-		vec3 halfVector = normalize(viewVector + lightVector);
+		const vec3 halfVector = normalize(viewVector + lightVector); 
 
-		float NoL = clamp(dot(normalVector, lightVector), 0, 1);
-		float NoH = clamp(dot(normalVector, halfVector), 0, 1);
-		float LoH = clamp(dot(lightVector, halfVector), 0, 1);
+		const float NoL = clamp(dot(normalVector, lightVector), 0, 1);
+		const float NoH = clamp(dot(normalVector, halfVector), 0, 1);
+		const float LoH = clamp(dot(lightVector, halfVector), 0, 1);
 
 		// Cook-Torrance specular BRDF
-		float D = D_GGX(NoH, roughness);
-		vec3 F = F_Schlick(LoH, F0);
-		float V = V_SmithGGXCorrelated(NoV, NoL, roughness);
+		const float D = D_GGX(NoH, roughness);
+		const vec3 F = F_Schlick(LoH, F0);
+		const float V = V_SmithGGXCorrelated(NoV, NoL, roughness);
 
-		vec3 Fr = (D * V) * F; // Specular component
+		const vec3 Fr = (D * V) * F; // Specular component
 
-		float Fd = Fd_Burley(NoV, NoL, LoH, roughness);
+		const float Fd = Fd_Burley(NoV, NoL, LoH, roughness);
 		//		float Fd = Fd_Lambert();
 
-		float attenuation = 1.0;
+		const float lightDistance = length(bLights[i].position - worldPos);
+		const float attenuation = 1.0 / (lightDistance * lightDistance); // ? + (2 * lightDistance) + 1;
 
-		float lightDistance = length(bLights[i].position - worldPos);
-		attenuation /= (lightDistance * lightDistance); // ? + (2 * lightDistance) + 1;
-
-		vec3 radiance = bLights[i].colour * bLights[i].strength * attenuation;
+		const vec3 radiance = bLights[i].colour * bLights[i].strength * attenuation;
 
 		// Shadow Mapping
 
@@ -111,30 +126,30 @@ void main()
 
 		if (uShadowsEnabled)
 		{
-			vec3 invLightVector = worldPos - bLights[i].position;
-			float currentDepth = length(invLightVector);
+			const vec3 invLightVector = worldPos - bLights[i].position;
+			const float currentDepth = length(invLightVector);
 
-			float bias = 0.01;
+			const float viewDistance = length(uCameraPosition - worldPos);
+			const float diskRadius = 0.002;
 
-			float viewDistance = length(uCameraPosition - worldPos);
-			float diskRadius = 0.0015;
+			const float z = (currentDepth - uShadowMapViewPlanes.x) / (uShadowMapViewPlanes.y - uShadowMapViewPlanes.x);
+
 			for (int j = 0; j < NUM_SHADOW_SAMPLES; j++)
 			{
-				float closestDepth = texture(uShadowMaps, vec4(invLightVector + sampleOffsetDirections[j] * diskRadius, i)).r * uShadowMapDepth;
-				if (currentDepth - bias > closestDepth)
-				{
-					shadow += 1.0;
-				}
+				const vec2 disk = VogelDiskSample(j, NUM_SHADOW_SAMPLES, gradientNoise * 2 * PI);
+				const vec3 offset = vec3(disk, 1 - gradientNoise);
+				const vec3 cubemapUVW = invLightVector + (offset * diskRadius);
+				
+				shadow += texture(uShadowMaps, vec4(cubemapUVW, i), z);
 			}
 
 			shadow /= float(NUM_SHADOW_SAMPLES);
 		}
 
-
 		Lo += (diffuseColor * Fd + Fr) * radiance * NoL * (1 - shadow);
 	}
 
-	vec3 colour = Lo * (1 - occlusion);
+	const vec3 colour = Lo * occlusion;
 
-	vFragColour = vec4(colour.rgb, 1.0);
+	vFragColour = vec4(vec3(colour), 1.0);
 }

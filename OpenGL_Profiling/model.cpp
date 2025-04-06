@@ -8,7 +8,7 @@
 #include <iostream>
 #include <span>
 
-void Model::selectAnimation(std::string animationName, float blendDuration, bool lockstep)
+void Model::selectAnimationBlendInto(std::string animationName, float blendDuration, bool lockstep)
 {
 	if (animations.find(animationName) == animations.end())
 	{
@@ -41,9 +41,49 @@ void Model::selectAnimation(std::string animationName, float blendDuration, bool
 	{
 		currentAnimation = animationName;
 	}
+
+	staticBlend = -1.0f;
+	fit = false;
 }
 
-std::unordered_map<int, Model::TransformFrame> Model::getFrame(std::string animation, float t)
+void Model::selectAnimationStaticBlend(std::string animationA, std::string animationB, float staticFactor, bool fit, bool lockstep)
+{
+	if (animations.find(animationA) == animations.end())
+	{
+		spdlog::warn("Invalid animation: {}", animationA);
+		return;
+	}
+
+	if (animations.find(animationB) == animations.end())
+	{
+		spdlog::warn("Invalid animation: {}", animationB);
+		return;
+	}
+
+	// If there is currently an animation selected, start the new one at a proportional time
+	if (currentAnimation != "" && lockstep)
+	{
+		float elapsedRatio = animations[currentAnimation].elapsed / animations[currentAnimation].duration;
+		animations[animationA].elapsed = animations[animationA].duration * elapsedRatio;
+		animations[animationB].elapsed = animations[animationB].duration * elapsedRatio;
+	}
+	else
+	{
+		animations[animationA].elapsed = 0.0f;
+		animations[animationB].elapsed = 0.0f;
+	}
+
+	blendDuration = 0.0f;
+	blendElapsed = 0.0f;
+	staticBlend = staticFactor;
+
+	currentAnimation = animationA;
+	nextAnimation = animationB;
+
+	fit = false;
+}
+
+std::unordered_map<int, TransformOffset> Model::getFrame(std::string animation, float t)
 {
 	if (animations.find(animation) == animations.end())
 	{
@@ -53,7 +93,7 @@ std::unordered_map<int, Model::TransformFrame> Model::getFrame(std::string anima
 
 	const Animation& anim = animations[animation];
 
-	std::unordered_map<int, TransformFrame> nodeOffsets;
+	std::unordered_map<int, TransformOffset> nodeOffsets;
 
 	for (const auto& channel : anim.channels)
 	{
@@ -131,35 +171,63 @@ std::unordered_map<int, Model::TransformFrame> Model::getFrame(std::string anima
 	return nodeOffsets;
 }
 
+void Model::selectAnimation(std::string animationName)
+{
+	if (animations.find(animationName) == animations.end())
+	{
+		spdlog::warn("Invalid animation: {}", animationName);
+		return;
+	}
+
+	currentAnimation = animationName;
+
+	blendElapsed = 0.0f;
+	blendDuration = 0.0f;
+	staticBlend = -1.0f;
+	nextAnimation = "";
+	fit = false;
+}
+
 void Model::advanceAnimation(float deltaTime)
 {
+	// Find the current animation
 	if (currentAnimation == "")
 		return;
 
 	auto& anim = animations[currentAnimation];
 
+	// Advance current animation
 	anim.elapsed += deltaTime;
 	if (anim.loop) anim.elapsed = std::fmod(anim.elapsed, anim.duration);
 
 	float blendFactor = 0.0f;
 
-	const std::unordered_map<int, TransformFrame> offsets = getFrame(currentAnimation, anim.elapsed);
-	std::unordered_map<int, TransformFrame> nextOffsets = offsets;
-
-	if (nextAnimation != "" && blendElapsed < blendDuration)
+	// Calculate blend factor
+	if (blendDuration > 0.0f)
 	{
-		auto& nextAnim = animations[nextAnimation];
-
-		nextAnim.elapsed += deltaTime;
-		if (nextAnim.loop) nextAnim.elapsed = std::fmod(nextAnim.elapsed, nextAnim.duration);
-
-		blendElapsed += deltaTime;
-
-		nextOffsets = getFrame(nextAnimation, nextAnim.elapsed);
-
 		blendFactor = blendElapsed / blendDuration;
 	}
 
+	// If we have set a static blend factor then just use that
+	if (staticBlend != -1.0f) blendFactor = staticBlend;
+
+	const std::unordered_map<int, TransformOffset> offsets = getFrame(currentAnimation, anim.elapsed);
+	std::unordered_map<int, TransformOffset> nextOffsets = offsets;
+
+	// Find next animation if it is required
+	if (nextAnimation != "" && blendFactor > 0.0f)
+	{
+		auto& nextAnim = animations[nextAnimation];
+
+		// And advance it... ( if fit is enabled stretch to fit the first animation... ? ) 
+		nextAnim.elapsed += fit ? deltaTime * (anim.duration / nextAnim.duration) : deltaTime;
+		if (nextAnim.loop) nextAnim.elapsed = std::fmod(nextAnim.elapsed, nextAnim.duration);
+
+		// And load its offsets
+		nextOffsets = getFrame(nextAnimation, nextAnim.elapsed);
+	}
+
+	// Apply the blend
 	for (const auto& [i, offset] : offsets)
 	{
 		nodes[i]->rotation = glm::slerp(offset.rotation, nextOffsets[i].rotation, blendFactor);
@@ -170,13 +238,30 @@ void Model::advanceAnimation(float deltaTime)
 	}
 
 	// If the blend is finished, clean up
-	if (blendElapsed > blendDuration)
+	if (blendElapsed >= blendDuration && (staticBlend == -1.0f || staticBlend == 1.0f))
 	{
 		blendElapsed = 0.0f;
 		blendDuration = 0.0f;
-
+		staticBlend = 0.0f;
 		currentAnimation = nextAnimation;
-		nextAnimation = "";
+		nextAnimation = 0.0f;
+	}
+	else
+	{
+		// Otherwise advance the blend
+		blendElapsed += deltaTime;
+	}
+}
+
+void Model::setJoints(const std::unordered_map<int, TransformOffset>& offsets)
+{
+	for (const auto& [i, offset] : offsets)
+	{
+		nodes[i]->rotation = offset.rotation;
+
+		nodes[i]->translation = offset.translation;
+
+		nodes[i]->scale = offset.scale;
 	}
 }
 
@@ -494,13 +579,25 @@ const glm::vec3 Model::getVelocity()
 		return glm::vec3(0.0f);
 
 	glm::vec3 v = animations[currentAnimation].velocity;
+	glm::vec3 u = v;
 
-	if (blendElapsed < blendDuration)
+	glm::vec3 result = v;
+
+	if (nextAnimation != "")
+		u = animations[nextAnimation].velocity;
+
+	if (staticBlend > 0.0f)
 	{
-		return glm::mix(v, animations[nextAnimation].velocity, blendElapsed / blendDuration);
+		float avgSpeed = (glm::length(v) + glm::length(u)) / 2;
+		result = glm::normalize(glm::mix(v, u, staticBlend)) * glm::length(v);
 	}
 
-	return v;
+	else if (blendElapsed < blendDuration)
+	{
+		result = glm::mix(v, u, blendElapsed / blendDuration);
+	}
+
+	return result;
 }
 
 std::shared_ptr<TransformNode> Model::getNode(const std::string name)
@@ -704,6 +801,9 @@ void Model::loadTextures(const tinygltf::Model& model)
 
 void Model::loadNodes(const tinygltf::Model& model)
 {
+	nodes.reserve(model.nodes.size());
+	primitives.reserve(model.meshes.size());
+
 	for (size_t i = 0; i < model.nodes.size(); i++)
 	{
 		const auto& node = model.nodes[i];

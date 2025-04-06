@@ -12,14 +12,31 @@
 
 class ShaderProgram
 {
+private:
+	struct Shader
+	{
+		const GLuint id;
+		const std::filesystem::path path;
+	};
+
+	static inline int shouldRecompile = 0;
+	int recompileCount;
+
 public:
-	ShaderProgram(const std::filesystem::path& vertexShader, const std::filesystem::path& fragmentShader);
+	ShaderProgram(const std::filesystem::path vertexShader, const std::filesystem::path fragmentShader);
 	ShaderProgram();
 	~ShaderProgram();
 
-	void addShader(GLenum type, const std::filesystem::path& shaderPath);
+public:
+	static void recompileAllPrograms() { shouldRecompile++; }
+
+public:
+
+	void addShader(GLenum stage, const std::filesystem::path shaderPath);
 	
 	void linkProgram();
+	
+	void recompileProgram();
 
 	void use();
 
@@ -94,11 +111,11 @@ public:
 	}
 
 private:
-	bool compileShader(GLuint shader, const std::filesystem::path& shaderPath);
+	bool compileShader(GLuint shader, const std::filesystem::path shaderPath);
 
 private:
 	bool isLinked;
 	GLuint programId;
 
-	std::vector<GLuint> shaders;
+	std::vector<Shader> shaders;
 };

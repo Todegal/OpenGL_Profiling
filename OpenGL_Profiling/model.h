@@ -12,45 +12,7 @@
 #include <filesystem>
 #include <unordered_map>
 
-struct TransformNode
-{
-	inline const glm::mat4 getWorldTransform() const
-	{
-		if (parent)
-		{
-			return parent->getWorldTransform() * getLocalTransform();
-		}
-		else
-		{
-			return getLocalTransform();
-		}
-	}
-
-	inline const glm::mat4 getLocalTransform() const 
-	{
-
-		glm::mat4 t = glm::translate(glm::mat4(1.0f), translation);
-		glm::mat4 r = glm::toMat4(rotation);
-		glm::mat4 s = glm::scale(glm::mat4(1.0f), scale);
-
-		glm::mat4 transformation = t * (s * r);
-
-		return transformation;
-	}
-
-	inline const glm::vec3 getWorldPosition() const
-	{
-		return glm::vec3(getWorldTransform()[3]);
-	}
-
-	glm::vec3 translation = glm::vec3(0.0f);
-	glm::quat rotation = glm::quat();
-	glm::vec3 scale = glm::vec3(1.0f);
-
-	std::shared_ptr<TransformNode> parent = nullptr;
-
-	std::string name = "";
-};
+#include "transform.h"
 
 struct MeshPrimitive
 {
@@ -116,21 +78,43 @@ private: // Containers
 	std::string rootNode;
 
 	std::unordered_map<std::string, Animation> animations;
+
+// Animation Handlers
+private:
 	std::string currentAnimation;
 	std::string nextAnimation;
 
 	float blendDuration = 0.0f;
 	float blendElapsed = 0.0f;
+	float staticBlend = -1.0f;
+	bool fit = false;
 
-public:
-	void selectAnimation(std::string animationName, float blendDuration = 0.0f, bool lockstep = false);
+public: // Animation Accessors
+	// Snap straight into new animation
+	void selectAnimation(std::string animationName);
+
+	// Start new animation with a timed blend
+	// If lockstep is true it will start at the time proportionate to where the current animation is
+	void selectAnimationBlendInto(std::string animationName, float blendDuration, bool lockstep);
+
+	// Blend two animations by some factor
+	// If fit is true it will fit Animation B to the length of Animation A, otherwise they will both continue independently
+	// If lockstep is true it will start both at the time proportionate to where the current animation is 
+	void selectAnimationStaticBlend(std::string animationA, std::string animationB, float staticFactor, bool fit, bool lockstep);
 
 	void advanceAnimation(float deltaTime);
+
+	const std::string getAnimation() const { return currentAnimation; }
+	const std::string getNextAnimation() const { return nextAnimation; }
+
+	const std::unordered_map<std::string, Animation> getAnimations() const { return animations; }
+	
+	void setJoints(const std::unordered_map<int, TransformOffset>& offsets);
 
 public:
 	Model(std::filesystem::path gltfPath, std::string root = "");
 	Model(const std::vector<GLuint>& buffers, const std::vector<MeshPrimitive>& primitives, const std::vector<GLuint>& textures)
-		: buffers(buffers), primitives(primitives), textures(textures), 
+		: buffers(buffers), primitives(primitives), opaquePrimitives(primitives), translucentPrimitives(), textures(textures), 
 		transformation(std::make_shared<TransformNode>()), currentAnimation(""), nextAnimation(""), rootNode("")
 	{
 		for (auto& prim : primitives)
@@ -171,16 +155,8 @@ public:
 	const bool isRigged() { return joints.size() > 0; }
 
 private:
-	// Decoupled transform data which doesn't make me cry trying to parse through a linked list
-	struct TransformFrame
-	{
-		glm::vec3 translation = glm::vec3(0.0f);
-		glm::quat rotation = glm::quat();
-		glm::vec3 scale = glm::vec3(1.0f);
-	};
-
 	// returns the transform values of the joints array, at a given time in any animation
-	std::unordered_map<int, TransformFrame> getFrame(std::string animation, float t);
+	std::unordered_map<int, TransformOffset> getFrame(std::string animation, float t);
 
 private:
 	void loadBuffers(const tinygltf::Model& model); // Model is passed through member functions so that it can go out of scope and be destroyed inside the constructor
