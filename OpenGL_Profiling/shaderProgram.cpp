@@ -8,7 +8,7 @@
 #include <string>
 
 ShaderProgram::ShaderProgram(const std::filesystem::path vertexShader, const std::filesystem::path fragmentShader)
-	: isLinked(false), recompileCount(0)
+	: isLinked(false)
 {
 	addShader(GL_VERTEX_SHADER, vertexShader);
     addShader(GL_FRAGMENT_SHADER, fragmentShader);
@@ -17,7 +17,7 @@ ShaderProgram::ShaderProgram(const std::filesystem::path vertexShader, const std
 }
 
 ShaderProgram::ShaderProgram()
-    : isLinked(false), recompileCount(0)
+    : isLinked(false)
 {
     programId = glCreateProgram();
 }
@@ -159,30 +159,8 @@ void ShaderProgram::linkProgram()
     isLinked = true;
 }
 
-void ShaderProgram::recompileProgram()
-{
-    isLinked = false;
-
-    for (const auto& shader : shaders)
-    {
-        glDetachShader(programId, shader.id);
-
-        if (!compileShader(shader.id, shader.path))
-        {
-            glDeleteShader(shader.id);
-            return;
-        }
-    }
-}
-
 void ShaderProgram::use()
 {
-    if (shouldRecompile > recompileCount)
-    {
-        recompileProgram();
-        recompileCount++;
-    }
-
     if (!isLinked)
         linkProgram();
 

@@ -19,16 +19,10 @@ private:
 		const std::filesystem::path path;
 	};
 
-	static inline int shouldRecompile = 0;
-	int recompileCount;
-
 public:
 	ShaderProgram(const std::filesystem::path vertexShader, const std::filesystem::path fragmentShader);
 	ShaderProgram();
 	~ShaderProgram();
-
-public:
-	static void recompileAllPrograms() { shouldRecompile++; }
 
 public:
 
@@ -36,8 +30,6 @@ public:
 	
 	void linkProgram();
 	
-	void recompileProgram();
-
 	void use();
 
 	inline const GLint getLocation(const std::string& name) const 

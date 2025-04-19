@@ -2,7 +2,12 @@
 
 #include <spdlog/spdlog.h>
 
-AnimationController::AnimationController(std::shared_ptr<Model> model)
+AnimationController::AnimationController()
+	: model(nullptr)
+{
+}
+
+AnimationController::AnimationController(std::shared_ptr<RenderableModel> model)
 	: model(model)
 {
 	animations = model->getAnimations();
@@ -18,49 +23,46 @@ AnimationController::AnimationController(std::shared_ptr<Model> model)
 
 void AnimationController::advance(float dt)
 {
-	// If a transition is finished then update
-	if (transitionElapsed >= transitionDuration && inTransition)
-	{
-		currentAnimation = nextAnimation;
-		transitionElapsed = 0.0f;
-		transitionDuration = 0.0f;
-		transitionRatio = 0.0f;
-		inTransition = false;
+	if (!inTransition && currentAnimation == "") return;
 
-		currentAnimation = nextAnimation;
-		nextAnimation = "";
-	}
-	else if (inTransition)
+	if (inTransition)
 	{
-		transitionRatio = transitionElapsed / transitionDuration;
 		transitionElapsed += dt;
-	}
+		transitionRatio = transitionDuration > 0.0f
+			? std::clamp(transitionElapsed / transitionDuration, 0.0f, 1.0f)
+			: 0.0f;
 
-	if (currentAnimation == "")
-		return;
+		if (transitionElapsed >= transitionDuration)
+		{
+			// Finish transition
+			currentAnimation = nextAnimation;
+			nextAnimation = "";
+
+			inTransition = false;
+			transitionElapsed = 0.0f;
+			transitionDuration = 0.0f;
+			transitionRatio = 0.0f;
+		}
+	}
 
 	// Find offsets for current animation
 	std::unordered_map<int, TransformOffset> offsets;
 
-	if (blends.find(currentAnimation) != blends.end())
+	if (blends.contains(currentAnimation))
 	{
-		auto& blend = blends[currentAnimation];
+		auto& blend = blends.at(currentAnimation);
 
 		advanceBlend(blend, dt);
 
 		offsets = getBlendFrame(blend, blend.elapsed);
 	}
-	else if (animations.find(currentAnimation) != animations.end())
+	else
 	{
-		auto& anim = animations[currentAnimation];
+		auto& anim = animations.at(currentAnimation);
 
 		advanceAnimation(anim, dt);
 
 		offsets = getAnimationFrame(anim, anim.elapsed);
-	}
-	else
-	{
-		spdlog::error("Invalid animation or blend: {}", currentAnimation);
 	}
 
 	// Find offsets for the next animation or blend if it exists
@@ -68,9 +70,9 @@ void AnimationController::advance(float dt)
 	{
 		std::unordered_map<int, TransformOffset> nextOffsets;
 
-		if (blends.find(nextAnimation) != blends.end())
+		if (blends.contains(nextAnimation))
 		{
-			auto& blend = blends[nextAnimation];
+			auto& blend = blends.at(nextAnimation);
 
 			advanceBlend(blend, dt);
 
@@ -78,9 +80,9 @@ void AnimationController::advance(float dt)
 
 			offsets = blendOffsets(offsets, nextOffsets, transitionRatio);
 		}
-		else if (animations.find(nextAnimation) != animations.end())
+		else
 		{
-			auto& anim = animations[nextAnimation];
+			auto& anim = animations.at(nextAnimation);
 
 			advanceAnimation(anim, dt);
 
@@ -88,31 +90,49 @@ void AnimationController::advance(float dt)
 
 			offsets = blendOffsets(offsets, nextOffsets, transitionRatio);
 		}
-		else
-		{
-			spdlog::error("Invalid animation or blend: {}", nextAnimation);
-		}
 	}
 
 	model->setJoints(offsets);
 }
 
-void AnimationController::selectAnimation(const std::string& name, float transition, float lockstep)
+void AnimationController::selectAnimation(const std::string& name, float transition, bool lockstep)
 {
-	if (blends.find(name) != blends.end())
+	if (nextAnimation == name || currentAnimation == name) return;
+	
+	float elapsedRatio = 0.0f;
+
+	if (lockstep && currentAnimation != "")
 	{
-		nextAnimation = name;
+		if (blends.contains(currentAnimation))
+		{
+			const auto& b = blends.at(currentAnimation);
+			elapsedRatio = b.elapsed / b.duration;
+		}
+		else
+		{
+			const auto& curAnim = animations.at(currentAnimation);
+			elapsedRatio = curAnim.elapsed / curAnim.duration;
+		}
 	}
-	else if (animations.find(name) != animations.end())
+
+	if (blends.contains(name))
 	{
-		nextAnimation = name;
+		auto& b = blends.at(name);
+		b.elapsed = b.duration * elapsedRatio;
+	}
+	else if (animations.contains(name))
+	{
+		auto& a = animations.at(name);
+		a.elapsed = a.duration * elapsedRatio;
 	}
 	else
 	{
 		spdlog::error("Invalid animation or blend: {}", currentAnimation);
 	}
 
-	if (currentAnimation != name && !inTransition)
+	nextAnimation = name;
+
+	if (currentAnimation != name)
 	{
 		transitionDuration = transition;
 		transitionElapsed = 0.0f;
@@ -123,36 +143,30 @@ void AnimationController::selectAnimation(const std::string& name, float transit
 
 const glm::vec3 AnimationController::getVelocity() const
 {
+	if (currentAnimation == "") return glm::vec3(0.0f);
+
 	glm::vec3 v = glm::vec3(0.0f);
 
-	if (blends.find(currentAnimation) != blends.end())
+	if (blends.contains(currentAnimation))
 	{
 		v = getBlendVelocity(blends.at(currentAnimation));
 	}
-	else if (animations.find(currentAnimation) != animations.end())
-	{
-		v = animations.at(currentAnimation).velocity;
-	}
 	else
 	{
-		spdlog::error("Invalid animation or blend: {}", currentAnimation);
+		v = animations.at(currentAnimation).velocity;
 	}
 
 	glm::vec3 u = v;
 
 	if (inTransition)
 	{
-		if (blends.find(nextAnimation) != blends.end())
+		if (blends.contains(nextAnimation))
 		{
 			u = getBlendVelocity(blends.at(nextAnimation));
 		}
-		else if (animations.find(nextAnimation) != animations.end())
-		{
-			u = animations.at(nextAnimation).velocity;
-		}
 		else
 		{
-			spdlog::error("Invalid animation or blend: {}", currentAnimation);
+			u = animations.at(nextAnimation).velocity;
 		}
 
 		v = glm::mix(v, u, transitionRatio);
@@ -163,14 +177,23 @@ const glm::vec3 AnimationController::getVelocity() const
 
 void AnimationController::addBlend(const std::string& name, const std::string& A, const std::string& B, bool loop, bool fit)
 {
-	if (animations.find(A) == animations.end() ||
-		animations.find(B) == animations.end())
+	auto aIt = animations.find(A);
+	auto bIt = animations.find(B);
+	
+	if (aIt == animations.end())
 	{
-		spdlog::warn("Invalid blend: {}, {}", A, B);
+		spdlog::error("Invalid animation: {}; unable to add blend: {}", A, name);
+		return;
 	}
 
-	const Animation& animA = animations[A];
-	const Animation& animB = animations[B];
+	if (bIt == animations.end())
+	{
+		spdlog::error("Invalid animation: {}; unable to add blend: {}", B, name);
+		return;
+	}
+
+	const Animation& animA = aIt->second;
+	const Animation& animB = bIt->second;
 
 	AnimationBlend blend;
 	blend.A = A;
@@ -185,7 +208,12 @@ void AnimationController::addBlend(const std::string& name, const std::string& A
 
 AnimationBlend& AnimationController::getBlend(const std::string& name)
 {
-	return blends[name];
+	return blends.at(name);
+}
+
+Animation& AnimationController::getAnimation(const std::string& name)
+{
+	return animations.at(name);
 }
 
 std::unordered_map<int, TransformOffset> AnimationController::blendOffsets(
@@ -195,11 +223,14 @@ std::unordered_map<int, TransformOffset> AnimationController::blendOffsets(
 
 	for (const auto& [i, offset] : a)
 	{
-		result[i].rotation = glm::slerp(offset.rotation, b.at(i).rotation, factor);
+		auto bIt = b.find(i);
+		if (bIt == b.end()) continue;
+
+		result[i].rotation = glm::slerp(offset.rotation, bIt->second.rotation, factor);
 		
-		result[i].translation = glm::mix(offset.translation, b.at(i).translation, factor);
+		result[i].translation = glm::mix(offset.translation, bIt->second.translation, factor);
 		
-		result[i].scale = glm::mix(offset.scale, b.at(i).scale, factor);
+		result[i].scale = glm::mix(offset.scale, bIt->second.scale, factor);
 	}
 
 	return result;
@@ -219,14 +250,8 @@ void AnimationController::advanceAnimation(Animation& anim, float dt)
 
 std::unordered_map<int, TransformOffset> AnimationController::getBlendFrame(const AnimationBlend& blend, float t)
 {
-	if (animations.find(blend.A) == animations.end() ||
-		animations.find(blend.B) == animations.end())
-	{
-		spdlog::warn("Invalid blend: {}, {}", blend.A, blend.B);
-	}
-
-	const Animation& animA = animations[blend.A];
-	const Animation& animB = animations[blend.B];
+	const Animation& animA = animations.at(blend.A);
+	const Animation& animB = animations.at(blend.B);
 
 	float stretchA = 1.0f;
 	float stretchB = 1.0f;
@@ -268,7 +293,7 @@ std::unordered_map<int, TransformOffset> AnimationController::getAnimationFrame(
 
 		if (frameDifference > 0.0f)
 		{
-			difference = std::min(t - *previousFrame, 0.0f) / frameDifference;
+			difference = std::max(t - *previousFrame, 0.0f) / frameDifference;
 		}
 
 		int component = 3;
@@ -332,8 +357,11 @@ const glm::vec3 AnimationController::getBlendVelocity(const AnimationBlend& blen
 	auto a = animations.find(blend.A);
 	auto b = animations.find(blend.B);
 
-	if (a != animations.end() && b != animations.end()) return glm::mix(a->second.velocity, b->second.velocity, blend.blendFactor);
-	
-	return glm::vec3(0.0f);
+	if (a == animations.end() || b == animations.end()) return glm::vec3(0.0f);
+
+	glm::vec3 c = glm::normalize(glm::mix(a->second.velocity, b->second.velocity, blend.blendFactor));
+	c *= glm::mix(glm::length(a->second.velocity), glm::length(b->second.velocity), blend.blendFactor);
+
+	return c;
 }
 

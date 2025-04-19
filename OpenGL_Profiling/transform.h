@@ -14,42 +14,90 @@ struct TransformOffset
 	glm::vec3 scale = glm::vec3(1.0f);
 };
 
-struct TransformNode
-{
-	inline const glm::mat4 getWorldTransform() const
-	{
-		if (parent)
-		{
-			return parent->getWorldTransform() * getLocalTransform();
-		}
-		else
-		{
-			return getLocalTransform();
-		}
+struct TransformNode : public std::enable_shared_from_this<TransformNode> {
+
+public:
+	void setTranslation(const glm::vec3& t) {
+		translation = t;
+		markDirty();
 	}
 
-	inline const glm::mat4 getLocalTransform() const
-	{
-
-		glm::mat4 t = glm::translate(glm::mat4(1.0f), translation);
-		glm::mat4 r = glm::toMat4(rotation);
-		glm::mat4 s = glm::scale(glm::mat4(1.0f), scale);
-
-		glm::mat4 transformation = t * (s * r);
-
-		return transformation;
+	void setRotation(const glm::quat& r) {
+		rotation = r;
+		markDirty();
 	}
 
-	inline const glm::vec3 getWorldPosition() const
-	{
+	void setScale(const glm::vec3& s) {
+		scale = s;
+		markDirty();
+	}
+
+	glm::vec3 getWorldPosition() const {
 		return glm::vec3(getWorldTransform()[3]);
 	}
 
+	const glm::mat4& getWorldTransform() const {
+		if (worldDirty) {
+			if (parent) {
+				worldTransform = parent->getWorldTransform() * getLocalTransform();
+			}
+			else {
+				worldTransform = getLocalTransform();
+			}
+			worldDirty = false;
+		}
+		return worldTransform;
+	}
+
+	const glm::mat4& getLocalTransform() const {
+		if (localDirty) {
+			glm::mat4 t = glm::translate(glm::mat4(1.0f), translation);
+			glm::mat4 r = glm::toMat4(rotation);
+			glm::mat4 s = glm::scale(glm::mat4(1.0f), scale);
+			localTransform = t * (s * r); // note: order can vary by convention
+			localDirty = false;
+		}
+		return localTransform;
+	}
+
+	void addChild(const std::shared_ptr<TransformNode>& child) {
+		children.push_back(child);
+		child->parent = shared_from_this(); // Requires enable_shared_from_this
+		child->markDirty();
+	}
+
+	//std::shared_ptr<TransformNode> getParent() const {
+	//	return parent;
+	//}
+
+	//void setParent(const std::shared_ptr<TransformNode>& p) {
+	//	parent = p;
+	//	markDirty();
+	//}
+
+	std::string name = "";
+
+private:
 	glm::vec3 translation = glm::vec3(0.0f);
 	glm::quat rotation = glm::quat();
 	glm::vec3 scale = glm::vec3(1.0f);
 
-	std::shared_ptr<TransformNode> parent = nullptr;
+private:
+	// Internal caching
+	mutable glm::mat4 localTransform = glm::mat4(1.0f);
+	mutable glm::mat4 worldTransform = glm::mat4(1.0f);
+	mutable bool localDirty = true;
+	mutable bool worldDirty = true;
 
-	std::string name = "";
+	std::shared_ptr<TransformNode> parent = nullptr;
+	std::vector<std::shared_ptr<TransformNode>> children;
+
+	void markDirty() {
+		localDirty = true;
+		worldDirty = true;
+
+		for (auto& child : children) {
+			child->markDirty(); // propagate recursively
+		}
+	}
 };

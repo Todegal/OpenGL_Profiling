@@ -1,14 +1,15 @@
 #pragma once
 
+#include "model.h"
+
 #include <memory>
 #include <vector>
 
-class Model;
 struct Light;
 
 struct Scene
 {
 	std::vector<Light> sceneLights;
-	std::vector<std::shared_ptr<Model>> sceneModels;
+	std::vector<std::shared_ptr<RenderableModel>> sceneModels;
 	std::string enviromentMap = "";
 };

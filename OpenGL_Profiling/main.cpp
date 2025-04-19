@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <algorithm>
+#include <execution>
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
@@ -56,8 +57,6 @@ gl_error_callback(GLenum source,
 	case GL_DEBUG_SEVERITY_MEDIUM:
 		spdlog::warn("OpenGL: {}", message);
 		break;
-	default:
-		spdlog::trace("OpenGL: {}", message);
 	}
 
 	//spdlog::debug("GL CALLBACK: {0} type = {1:#X}, severity = {2:#X}, message = {3}",
@@ -70,7 +69,7 @@ int main()
 	Timer t;
 	t.start();
 
-	spdlog::set_level(spdlog::level::debug);
+	spdlog::set_level(spdlog::level::trace);
 
 	if (!glfwInit())
 	{
@@ -134,6 +133,8 @@ int main()
 
 	glEnable(GL_CULL_FACE);
 
+	glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
+
 	glViewport(0, 0, WIDTH, HEIGHT);
 
 	InputHandler input(window);
@@ -143,64 +144,77 @@ int main()
 
 	input.defineAction("recompile", { GLFW_KEY_R }, {});
 
-	//OrbitCamera camera(
-	//	glm::vec3(0.0f),
-	//	glm::vec3(0.0f, 1.0f, 0.0f),
-	//	5.0f, 0.2f, 0.0f, glm::quarter_pi<float>()
-	//);
+	OrbitCamera orbitCamera(
+		glm::vec3(0.0f),
+		glm::vec3(0.0f, 1.0f, 0.0f),
+		5.0f, 0.2f, 0.0f, glm::quarter_pi<float>()
+	);
 
 	CharacterController character(input);
 
-	PBRRenderer renderer(glm::ivec2(WIDTH, HEIGHT), character.getCamera());
+	PBRRenderer renderer(glm::ivec2(WIDTH, HEIGHT), std::make_shared<OrbitCamera>(std::move(orbitCamera)));
 
-	std::vector<std::shared_ptr<Model>> models;
+	std::vector<std::string> modelPaths = {
+		"C:\\Users\\Niall Townley\\Documents\\Source\\Viper\\Models\\Sponza\\glTF\\Sponza.gltf",
+		"C:\\Users\\Niall Townley\\Documents\\Source\\Viper\\Models\\Statue\\greek-slave-plaster-cast-150k-4096-web.gltf",
+		//"../Models/Board/Board.glb"
+	};
+	std::vector<RawModel> loadedModels;
+
+	std::vector<std::shared_ptr<RenderableModel>> models;
+
+	std::for_each(std::execution::par, modelPaths.begin(), modelPaths.end(), 
+		[&loadedModels](const std::string& path)
+		{
+			loadedModels.push_back(RawModel(path));
+		}
+	);
+
+	std::for_each(loadedModels.begin(), loadedModels.end(),
+		[&models] (RawModel& m) {
+			models.push_back(std::make_shared<RenderableModel>(m.extract()));
+		}
+	);
 
 	models.push_back(character.getModel());
-	//models.push_back(std::make_shared<Model>("C:/Users/Niall Townley/Documents/Source/Viper/Models/Sponza/glTF/Sponza.gltf"));
-
-	//models.push_back(Model::constructUnitQuad());
-	//models.back()->getTransform()->rotation = glm::angleAxis(glm::radians(-90.0f), glm::vec3(1, 0, 0));
-	//models.back()->getTransform()->scale = glm::vec3(10.0f);
-
-	models.push_back(std::make_shared<Model>("../Models/Board/Board.glb"));
 
 	std::vector<Light> lights;
-	lights.push_back(
-		{
-			{ 1, 1, 0 },
-			{ 1, 0, 0 },
-			10.0f
-		}
-	);
+	//lights.push_back(
+	//	{
+	//		{ 1, 1, 0 },
+	//		{ 1, 0, 0 },
+	//		10.0f, Light::POINT
+	//	}
+	//);
 
-	lights.push_back(
-		{
-			{ 0, 2, 0 },
-			{ 0, 1, 0 },
-			10.0f
-		}
-	);
+	//lights.push_back(
+	//	{
+	//		{ 0, 2, 0 },
+	//		{ 0, 1, 0 },
+	//		10.0f, Light::POINT
+	//	}
+	//);
 
-	lights.push_back(
-		{
-			{ 0, 1, 1 },
-			{ 0, 0, 1 },
-			10.0f
-		}
-	);
+	//lights.push_back(
+	//	{
+	//		{ 0, 1, 1 },
+	//		{ 0, 0, 1 },
+	//		10.0f, Light::POINT
+	//	}
+	//);
 
-	int nLights = 20;
+	int nLights = 0;
 
 	for (size_t i = 0; i < nLights; i++)
 	{
-		glm::vec3 position = { glm::linearRand(-2.0f, 2.0f), glm::linearRand(0.2f, 5.0f), glm::linearRand(-2.0f, 2.0f) };
+		glm::vec3 position = { glm::linearRand(-2.0f, 2.0f), glm::linearRand(0.2f, 5.0f), glm::linearRand(-4.0f, 4.0f) };
 		glm::vec3 colour = { glm::linearRand(0.0f, 1.0f), glm::linearRand(0.0f, 1.0f), glm::linearRand(0.0f, 1.0f) };
 
 		lights.push_back(
 			{
 				glm::vec4(position, 1.0f),
 				colour,
-				10.0f
+				20.0f
 			}
 		);
 	}
@@ -209,7 +223,7 @@ int main()
 
 	scene->sceneLights = lights;
 	scene->sceneModels = models;
-	scene->enviromentMap = "C://Users/Niall Townley/Documents/Source/Viper/Environments/lake_pier_4k/lake_pier_4k.hdr";
+	scene->enviromentMap = "C://Users/Niall Townley/Documents/Source/Viper/Environments/818-hdri-skies-com.hdr";
 
 	renderer.loadScene(scene);
 
@@ -261,27 +275,32 @@ int main()
 		if (!ImGui::GetIO().WantCaptureKeyboard && !ImGui::GetIO().WantCaptureMouse)
 			input.pollInputs();
 
-		/*const auto& offset = input.getMouseOffset();
-
-		if (input.getAction("rotate") && input.getAction("pan"))
+		if (imguiData.orbitCameraEnabled)
 		{
-			camera.moveHorizontal(-offset.x * 5.0f);
-			camera.moveVertical(offset.y * 5.0f);
+			const auto& offset = input.getMouseOffset();
+
+			if (input.getAction("rotate") && input.getAction("pan"))
+			{
+				orbitCamera.moveHorizontal(-offset.x * 5.0f);
+				orbitCamera.moveVertical(offset.y * 5.0f);
+			}
+			else if (input.getAction("rotate"))
+			{
+				orbitCamera.rotateAzimuth(offset.x * 10.0f);
+				orbitCamera.rotatePolar(offset.y * 10.0f);
+			}
+
+			orbitCamera.zoom(userPtr.scroll * 5.0f);
+
+			renderer.setCamera(std::make_shared<OrbitCamera>(std::move(orbitCamera)));
+
 		}
-		else if (input.getAction("rotate"))
+		else
 		{
-			camera.rotateAzimuth(offset.x * 10.0f);
-			camera.rotatePolar(offset.y * 10.0f);
+			character.update(t.getDeltaTime<Timer::f_seconds>());
+
+			renderer.setCamera(character.getCameraPtr());
 		}
-
-		if (input.getAction("recompile"))
-		{
-			ShaderProgram::recompileAllPrograms();
-		}
-
-		camera.zoom(userPtr.scroll * 5.0f);*/
-
-		character.update(t.getDeltaTime<Timer::f_seconds>());
 
 		renderer.frame();
 

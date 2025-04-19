@@ -36,29 +36,6 @@ uniform vec2 uScreenDimensions;
 
 out vec4 vFragColour;
 
-vec2 VogelDiskSample(int sampleIndex, int samplesCount, float phi)
-{
-    const float GoldenAngle = 2.4; // Define the constant for better practice
-
-    float r = sqrt(float(sampleIndex) + 0.5) / sqrt(float(samplesCount));
-    float theta = float(sampleIndex) * GoldenAngle + phi;
-
-    return vec2(r * cos(theta), r * sin(theta));
-}
-
-// https://www.shadertoy.com/view/ftKfzc
-float InterleavedGradientNoise(vec2 uv) {
-	// magic values are found by experimentation
-	uv += (vec2(47, 17) * 0.695);
-
-    vec3 magic = vec3( 0.06711056, 0.00583715, 52.9829189 );
-    
-    //https://juejin.cn/post/6844903687505068045
-    //vec3 magic = vec3( 12.9898, 78.233, 43758.5453123 );
-    
-    return fract(magic.z * fract(dot(uv, magic.xy)));
-}
-
 void main()
 {
 	// Decode g-buffer
@@ -79,7 +56,7 @@ void main()
 	float occlusion = buffer2.w;
 	
 	//
-	vec3 viewVector = normalize(uCameraPosition - vWorldPos);
+	vec3 viewVector = normalize(uCameraPosition - worldPos);
 	vec3 reflectionVector = reflect(-viewVector, normalVector);
 
 	float NoV = abs(dot(normalVector, viewVector)) + 1e-5;
@@ -97,7 +74,7 @@ void main()
 	vec3 Lo = vec3(0.0);
 	for (int i = 0; i < uNumLights; i++)
 	{
-		const vec3 lightVector = normalize(bLights[i].position - vWorldPos);
+		const vec3 lightVector = normalize(bLights[i].position - worldPos);
 
 		const vec3 halfVector = normalize(viewVector + lightVector); 
 
@@ -140,7 +117,7 @@ void main()
 				const vec3 offset = vec3(disk, 1 - gradientNoise);
 				const vec3 cubemapUVW = invLightVector + (offset * diskRadius);
 				
-				shadow += texture(uShadowMaps, vec4(cubemapUVW, i), z);
+				shadow += texture(uShadowMaps, vec4(cubemapUVW, i), z - shadowBias);
 			}
 
 			shadow /= float(NUM_SHADOW_SAMPLES);
@@ -149,7 +126,7 @@ void main()
 		Lo += (diffuseColor * Fd + Fr) * radiance * NoL * (1 - shadow);
 	}
 
-	const vec3 colour = Lo * occlusion;
+	const vec3 colour = Lo;// * occlusion;
 
 	vFragColour = vec4(vec3(colour), 1.0);
 }

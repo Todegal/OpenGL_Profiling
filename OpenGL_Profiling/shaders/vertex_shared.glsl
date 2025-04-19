@@ -16,24 +16,28 @@ layout(binding = 1) buffer bJointsBuffer
     mat4 bJoints[];
 };
 
-out vec2 vTexCoords;
-out vec3 vWorldPos;
-out vec3 vNormal;
+out VS_OUT
+{
+    vec2 vTexCoords;
+    vec3 vWorldPos;
+    vec3 vNormal;
+    vec3 vViewPos;
+} vs_out;
 
 void parseJoints()
 {
-    vWorldPos = vec3(0);
-    vNormal = vec3(0);
+    vs_out.vWorldPos = vec3(0);
+    vs_out.vNormal = vec3(0);
 
     for (int i = 0; i < 4; i++)
     {
-        vWorldPos += aBoneWeights[i] * (bJoints[int(aBoneIds[i]) + uJointsOffset] * vec4(aPos, 1.0)).xyz;
-        vNormal += aBoneWeights[i] * (mat3(bJoints[int(aBoneIds[i]) + uJointsOffset]) * aNormal);
+        vs_out.vWorldPos += aBoneWeights[i] * (bJoints[int(aBoneIds[i]) + uJointsOffset] * vec4(aPos, 1.0)).xyz;
+        vs_out.vNormal += aBoneWeights[i] * (mat3(bJoints[int(aBoneIds[i]) + uJointsOffset]) * aNormal);
     }
 
-    if (vWorldPos == vec3(0.0) || aBoneWeights.w > aBoneWeights.x)
+    if (vs_out.vWorldPos == vec3(0.0) || aBoneWeights.w > aBoneWeights.x)
     {
-        vWorldPos = aPos;
-        vNormal = aNormal;
+        vs_out.vWorldPos = aPos;
+        vs_out.vNormal = aNormal;
     }
 }

@@ -10,6 +10,7 @@ struct imgui_data
 	bool showRenderFlags;
 	bool showMetrics;
 	bool showCharacterInfo;
+	bool orbitCameraEnabled;
 };
 
 void metrics(Timer& timer, imgui_data& data);

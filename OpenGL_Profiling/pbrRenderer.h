@@ -6,25 +6,22 @@
 #include "shaderProgram.h"
 #include "imguiWindows.h"
 
-struct PBRRenderFlags
-{
-	bool normalsEnabled = true;
-	bool occlusionEnabled = true;
-
-	bool shadowsEnabled = true;
-};
-
 struct Light
 {
 	glm::vec3 position; // Position will act as direction if the light is directional
 	glm::vec3 colour;
 	float strength;
+
+	enum LIGHT_TYPE {
+		DIRECTIONAL = 0, 
+		POINT
+	} type;
 };
 
 class PBRRenderer
 {
 public:
-	PBRRenderer(glm::ivec2 screenSize, const Camera& camera);
+	PBRRenderer(glm::ivec2 screenSize, std::shared_ptr<Camera> cameraPtr);
 	~PBRRenderer();
 
 	// No copy/move
@@ -40,51 +37,92 @@ public:
 
 	void clearScene();
 
+	void setCamera(std::shared_ptr<Camera> cameraPtr);
+
 private:
 	std::shared_ptr<Scene> scene;
 
-private: // SHADERS
+	std::shared_ptr<Camera> viewCameraPtr;
 
+private:
 	const float lightCutoff = 1.0f / 1024.0f;
-
-	const Camera& camera;
 
 	glm::ivec2 dimensions;
 	glm::mat4 projectionMatrix;
 
-	const std::shared_ptr<Model> sphere;
-	const std::shared_ptr<Model> quad;
-	const std::shared_ptr<Model> cube;
-
-	struct ShaderLight
-	{
-		glm::vec3 position; // 12 bytes
-		float radius; // 4 bytes - was padding now useful
-		glm::vec3 colour; // 12 bytes
-		float strength; // 4 bytes
-	};
-
-	ShaderProgram depthPrepassShader;
-	ShaderProgram forwardPassShader;
-	ShaderProgram unlitShader;
-
-	GLuint lightBuffer;
+	std::vector<std::shared_ptr<RenderableModel>> primitiveModels;
+	std::shared_ptr<MeshPrimitive> sphere;
+	std::shared_ptr<MeshPrimitive> quad;
+	std::shared_ptr<MeshPrimitive> cube;
 
 	std::vector<int> jointOffsets;
 	GLuint jointsBuffer;
 
-	const int environmentMapDimensions = 1024;
-	GLuint environmentMap;
+	// --	  LIGHTS	-- 
 
-	ShaderProgram backgroundShader;
+	static constexpr int NUM_CASCADES = 5;
+
+	struct ShaderLight // Information that will go to the shader
+	{
+		glm::vec3 position; // 12 bytes -- OR direction
+		float radius; // 4 bytes - was padding now useful
+		glm::vec3 radiance; // 12 bytes -- now HDR!
+		int type; // 4 bytes
+		std::array<glm::mat4, NUM_CASCADES> lightSpaceMatrices;
+	};
+
+	GLuint lightBuffer;
+
+	int numLights;
+
+	std::vector<ShaderLight> pointLights;
+	std::vector<ShaderLight> directionalLights;
+
+	glm::mat4 lightSpaceMatrix;
+
+	// -----------------------
+
+	// --	 ENVIRONMENT	--
+
+	const int environmentMapDimensions = 1024;
+	float environmentMapFactor;
+
+	GLuint localCubemap;
+	GLuint environmentMap;
+	GLuint irradianceMap;
+	GLuint prefilteredMap;
+	GLuint brdfLUT;
+
+	glm::vec3 sunDirection;
+	glm::vec3 sunColour; // HDR !!!
+	float sunFactor;
+	 
+	ShaderProgram skyboxShader;
+
+	// -----------------------
+
+	// --	   SHADOWS		--
 
 	const float shadowNearPlane = 0.1f;
-	const float shadowFarPlane = 10.0f;
-	const int shadowMapDimensions = 2048;
+	const float shadowFarPlane = 1000.0f;
+	
+	int pointShadowMapDimensions;
+	int directionalShadowMapDimensions;
 
-	ShaderProgram shadowMapShader;
+	std::array<float, NUM_CASCADES> cascadeFarPlanes;
+	std::array<float, NUM_CASCADES> cascadeRatios = { 1.0f / 20.0f, 1.0f / 10.0f, 1.0f / 5.0f, 1 / 2.0f, 1.0f };
+
+	ShaderProgram pointShadowMapShader;
+	ShaderProgram directionalShadowMapShader;
+
+	GLuint directionalShadowMapArray;
+	GLuint pointShadowCubemapArray;
+
 	GLuint shadowMapFBO;
-	GLuint shadowCubemapArray;
+
+	// -----------------------
+
+	// --	DEFERRED PASS	--
 
 	ShaderProgram deferredPassShader;
 	ShaderProgram gBufferShader;
@@ -92,10 +130,24 @@ private: // SHADERS
 	std::vector<GLuint> gBufferTextures;
 	GLuint gBufferDepth;
 
+	// -----------------------
+
+	// --	FORWARD PASS	--
+
+	ShaderProgram depthPrepassShader;
+	ShaderProgram forwardPassShader;
+	ShaderProgram unlitShader;
+
+	// -----------------------
+
+	//	--		 HDR		--
+
 	ShaderProgram hdrPassShader;
 	GLuint hdrPassFBO;
 	GLuint hdrPassColour;
 	GLuint hdrPassDepthRBO;
+
+	// -----------------------
 
 public:
 	enum {
@@ -103,6 +155,7 @@ public:
 		OCCLUSION_ENABLED,
 		SHADOWS_ENABLED,
 		ENVIRONMENT_MAP_ENABLED,
+		EMULATE_SUN_ENABLED,
 		DEPTH_PREPASS_ENABLED,
 		DEFERRED_PASS_ENABLED,
 		HDR_PASS_ENABLED,
@@ -113,7 +166,6 @@ private:
 	std::array<bool, NUM_FLAGS> flags;
 
 public:
-
 	void setFlag(const int flag, bool value);
 	bool getFlag(const int flag) const { return flags[flag]; }
 
@@ -122,35 +174,48 @@ public:
 	void resize(glm::ivec2 screenSize);
 
 private:
+	const std::vector<glm::vec4> getFrustumCorners(const glm::mat4& pojectionViewMatrix) const;
 	void generateProjectionMatrix();
 	
-	void renderPrimitive(const MeshPrimitive& prim, ShaderProgram& program);
+	void renderPrimitive(const std::shared_ptr<MeshPrimitive> prim, ShaderProgram& program);
 
 	void loadMaterialProperties(const std::vector<GLuint>& textures, const tinygltf::Material& materialDesc, ShaderProgram& shader);
 
 private: // RENDER PASSES
 
-	void loadEnvironmentMap();
+	// --	 ENVIRONMENT	--
 
+	void loadEnvironmentMap();
+	void determineSunProperties(float* data, int width, int height, int channels);
+	void prefilterEnvironmentMap();
+
+	// --	   SHADOWS		--
+
+	void loadLights();
 
 	void initializeShadowMaps();
 	void resizeShadowMaps();
-	void buildShadowMaps(const std::vector<ShaderLight>& lights);
+	void buildShadowMaps();
+	void buildPointShadowMaps();
+	void buildDirectionalShadowMaps();
 	void cleanShadowMaps();
 
+	// --	DEFERRED PASS	--
 
 	void initializeDeferredPass();
 	void resizeDeferredPass();
 	void buildGBuffer();
-	void deferredPass(const std::vector<ShaderLight>& lights);
+	void deferredPass();
 	void cleanDeferredPass();
 
+	// --	FORWARD PASS	--
 
 	void initializeForwardPass();
 	void resizeForwardPass();
-	void forwardPass(const std::vector<ShaderLight>& lights);
+	void forwardPass();
 	void cleanForwardPass();
 
+	//	--		 HDR		--
 
 	void initializeHdrPass();
 	void resizeHdrPass();

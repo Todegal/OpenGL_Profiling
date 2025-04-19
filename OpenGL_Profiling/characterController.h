@@ -9,11 +9,12 @@
 #include "imguiWindows.h"
 #include "animationController.h"
 
+
 class CharacterController
 {
 private:
 	InputHandler& input;
-	const std::shared_ptr<Model> characterModel;
+	const std::shared_ptr<RenderableModel> characterModel;
 
 	AnimationController animControl;
 
@@ -29,7 +30,7 @@ private:
 		glm::vec3 center;
 	};
 
-	CharacterCamera camera;
+	CharacterCamera viewCamera;
 
 	float viewAzimuth;
 	float viewPolar;
@@ -43,8 +44,6 @@ private:
 	glm::vec3 radialVector;
 	glm::vec3 position;
 
-	float turnSpeed = 1.0f / 0.1f; // speed to turn whole circle
-
 public:
 	CharacterController(InputHandler& input, glm::vec3 startPos = { 0.0f, 0.0f, 0.0f });
 	~CharacterController();
@@ -53,8 +52,8 @@ public:
 	void showInfo(imgui_data data);
 
 public:
-	const std::shared_ptr<Model> getModel() { return characterModel; }
-	const Camera& getCamera() { return camera; }
+	const std::shared_ptr<RenderableModel> getModel() { return characterModel; }
+	std::shared_ptr<Camera> getCameraPtr() { return std::make_shared<CharacterCamera>(std::move(viewCamera)); }
 
 	enum CHARACTER_STATE
 	{
@@ -62,6 +61,7 @@ public:
 		WALK,
 		SPRINT,
 		WALK_BACK,
+		HOP,
 		TURN,
 		NUM_STATES
 	} state;
@@ -74,4 +74,5 @@ private:
 	CHARACTER_STATE walk(float dT);
 	CHARACTER_STATE sprint(float dt);
 	CHARACTER_STATE turn(float dt);
+	CHARACTER_STATE hop(float dt);
 };

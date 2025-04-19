@@ -19,11 +19,12 @@ struct AnimationBlend
 class AnimationController
 {
 public:
-	AnimationController(std::shared_ptr<Model> model);
+	AnimationController();
+	AnimationController(std::shared_ptr<RenderableModel> model);
 
 	void advance(float dt);
 
-	void selectAnimation(const std::string& name, float transition = 0.2f, float lockstep = false);
+	void selectAnimation(const std::string& name, float transition = 0.2f, bool lockstep = true);
 
 	const std::string& getCurrentAnimation() const { return currentAnimation; }
 	const std::string& getNextAnimation() const { return nextAnimation; }
@@ -36,10 +37,13 @@ public:
 public:
 	void addBlend(const std::string& name, const std::string& A, const std::string& B, 
 		bool loop = true, bool fit = true);
+
 	AnimationBlend& getBlend(const std::string& name);
 
+	Animation& getAnimation(const std::string& name);
+
 private:
-	std::shared_ptr<Model> model;
+	std::shared_ptr<RenderableModel> model;
 
 	std::string currentAnimation;
 	std::string nextAnimation;

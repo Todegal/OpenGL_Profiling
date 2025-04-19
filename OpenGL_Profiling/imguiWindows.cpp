@@ -33,6 +33,7 @@ void drawMenuBar(imgui_data& data)
             ImGui::MenuItem("Render Flags", "", &data.showRenderFlags);
 			ImGui::MenuItem("Frame Metrics", "", &data.showMetrics);
 			ImGui::MenuItem("Character Info", "", &data.showCharacterInfo);
+			ImGui::Checkbox("Unlock Camera", &data.orbitCameraEnabled);
 
             ImGui::EndMenu();
         }

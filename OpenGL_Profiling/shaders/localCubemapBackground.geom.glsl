@@ -34,7 +34,7 @@ void main()
         {
             gs_out.vWorldPos = gl_in[i].gl_Position.xyz;
             gs_out.vTexCoords = gs_in[i].vTexCoords;
-            gl_Position = (uViewProjectMatrices[face] * gl_in[i].gl_Position);
+            gl_Position = (mat4(mat3(uViewProjectMatrices[face])) * gl_in[i].gl_Position).xyww;
             EmitVertex();
         }    
         EndPrimitive();

@@ -24,30 +24,30 @@ void main()
 	vec4 baseColour = uBaseColour.factor;
 	if (uBaseColour.isTextureEnabled)
 	{
-		baseColour *= texture(uBaseColour.textureMap, vTexCoords);
+		baseColour *= texture(uBaseColour.textureMap, fs_in.vTexCoords);
 	}
 
 	float roughness = uMetallicRoughness.factor.g;
 	float metallic = uMetallicRoughness.factor.b;
 	if (uMetallicRoughness.isTextureEnabled)
 	{
-		vec3 mr = texture(uMetallicRoughness.textureMap, vTexCoords).rgb;
+		vec3 mr = texture(uMetallicRoughness.textureMap, fs_in.vTexCoords).rgb;
 		roughness *= mr.g;
 		metallic *= mr.b;
 	}
 
-	vec3 normalVector = normalize(vNormal);
+	vec3 normalVector = normalize(fs_in.vNormal);
 
 	if (uNormal.isTextureEnabled)
 	{
-		vec3 scaledNormal = texture(uNormal.textureMap, vTexCoords).rgb;
+		vec3 scaledNormal = texture(uNormal.textureMap, fs_in.vTexCoords).rgb;
 		scaledNormal.xy = (scaledNormal.xy * 2 - 1) * uNormal.factor.x;
 		scaledNormal.z = (scaledNormal.z * 2 - 1);
 
 		normalVector = normalize(getTBN() * scaledNormal);
 	}
 
-	// colour 	= mix(colour, colour * texture(uOcclusion.textureMap, vTexCoords).r, uOcclusion.factor.r);
+	// colour 	= mix(colour, colour * texture(uOcclusion.textureMap, fs_in.vTexCoords).r, uOcclusion.factor.r);
 	// 		 	= colour * ( 1 - factor ) + ( colour * occlusion_map ) * factor
 	// 			= K * (1 - f) + K * (M * f)
 	//			= K * ((1 - f) + (M * f))
@@ -55,13 +55,13 @@ void main()
 	float occlusion = 1.0;
 	if (uOcclusion.isTextureEnabled)
 	{
-		occlusion = (1 - uOcclusion.factor.r) + (texture(uOcclusion.textureMap, vTexCoords).r * uOcclusion.factor.r);
+		occlusion = (1 - uOcclusion.factor.r) + (texture(uOcclusion.textureMap, fs_in.vTexCoords).r * uOcclusion.factor.r);
 	}
 	
 	occlusion = clamp(occlusion, 0, 1);
 
 	// Pack the G-Buffer
-	g0 = vec4(vWorldPos.xyz, metallic);
+	g0 = vec4(fs_in.vWorldPos.xyz, metallic);
 	g1 = vec4(normalVector.xyz, roughness);
 	g2 = vec4(baseColour.xyz, occlusion);
 }

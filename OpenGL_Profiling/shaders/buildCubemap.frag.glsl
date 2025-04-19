@@ -1,14 +1,14 @@
 #version 460
 
-uniform sampler2D uEquirectangularMap;
+#include "fragment_shared.glsl"
 
-in vec4 vFragPos;
+uniform sampler2D uEquirectangularMap;
 
 out vec4 vFragColour;
 
 void main()
 {
-    vec3 pos = normalize(vFragPos.xyz);
+    vec3 pos = normalize(fs_in.vWorldPos.xyz);
     vec2 uv = vec2(atan(pos.z, pos.x), asin(pos.y));
     uv *= vec2(0.1591, 0.3183);
     uv += 0.5;

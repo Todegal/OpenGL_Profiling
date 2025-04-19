@@ -1,6 +1,12 @@
 #version 460
 
-#include "fragment_shared.glsl"
+in GS_OUT
+{
+    vec2 vTexCoords;
+    vec3 vWorldPos;
+    vec3 vNormal;
+    vec3 vViewPos;
+} fs_in;
 
 uniform samplerCube uEnvironmentMap;
 uniform float uEnvironmentMapFactor;

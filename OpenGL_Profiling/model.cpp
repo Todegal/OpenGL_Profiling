@@ -6,321 +6,77 @@
 #include <spdlog/spdlog.h>
 
 #include <iostream>
+#include <execution>
 #include <span>
 
-void Model::selectAnimationBlendInto(std::string animationName, float blendDuration, bool lockstep)
+RawModel::RawModel(std::filesystem::path gltfPath, std::string rootNode)
+	: rootNode(rootNode)
 {
-	if (animations.find(animationName) == animations.end())
-	{
-		spdlog::warn("Invalid animation: {}", animationName);
-		return;
-	}
+	model.emplace();
 
-	// don't change animation if it's the same as the one currently playing!
-	if (currentAnimation == animationName || nextAnimation == animationName)
-		return;
-
-	// If there is currently an animation selected, start the new one at a proportional time
-	if (currentAnimation != "" && animationName != "" && lockstep)
-	{
-		float elapsedRatio = animations[currentAnimation].elapsed / animations[currentAnimation].duration;
-		animations[animationName].elapsed = animations[animationName].duration * elapsedRatio;
-	}
-	else
-	{
-		animations[animationName].elapsed = 0.0f;
-	}
-
-	if (blendDuration > 0.0f)
-	{
-		this->blendDuration = blendDuration;
-		blendElapsed = 0.0f;
-		nextAnimation = animationName;
-	}
-	else
-	{
-		currentAnimation = animationName;
-	}
-
-	staticBlend = -1.0f;
-	fit = false;
-}
-
-void Model::selectAnimationStaticBlend(std::string animationA, std::string animationB, float staticFactor, bool fit, bool lockstep)
-{
-	if (animations.find(animationA) == animations.end())
-	{
-		spdlog::warn("Invalid animation: {}", animationA);
-		return;
-	}
-
-	if (animations.find(animationB) == animations.end())
-	{
-		spdlog::warn("Invalid animation: {}", animationB);
-		return;
-	}
-
-	// If there is currently an animation selected, start the new one at a proportional time
-	if (currentAnimation != "" && lockstep)
-	{
-		float elapsedRatio = animations[currentAnimation].elapsed / animations[currentAnimation].duration;
-		animations[animationA].elapsed = animations[animationA].duration * elapsedRatio;
-		animations[animationB].elapsed = animations[animationB].duration * elapsedRatio;
-	}
-	else
-	{
-		animations[animationA].elapsed = 0.0f;
-		animations[animationB].elapsed = 0.0f;
-	}
-
-	blendDuration = 0.0f;
-	blendElapsed = 0.0f;
-	staticBlend = staticFactor;
-
-	currentAnimation = animationA;
-	nextAnimation = animationB;
-
-	fit = false;
-}
-
-std::unordered_map<int, TransformOffset> Model::getFrame(std::string animation, float t)
-{
-	if (animations.find(animation) == animations.end())
-	{
-		spdlog::warn("Invalid animation: {}", animation);
-		return { };
-	}
-
-	const Animation& anim = animations[animation];
-
-	std::unordered_map<int, TransformOffset> nodeOffsets;
-
-	for (const auto& channel : anim.channels)
-	{
-		auto nextFrame = std::upper_bound(channel.keyframeTimes.begin(), channel.keyframeTimes.end(), t);
-		if (nextFrame == channel.keyframeTimes.end()) {
-			// If elapsed time is beyond any value, both iterators point to the last frame
-			nextFrame = std::prev(channel.keyframeTimes.end());
-		}
-
-		auto previousFrame = (nextFrame == channel.keyframeTimes.begin())
-			? nextFrame // If elapsed time is before any value, both iterators point to the first frame
-			: std::prev(nextFrame);
-
-		float frameDifference = (*nextFrame - *previousFrame);
-		float difference = 0.0f;
-
-		if (frameDifference > 0.0f)
-		{
-			difference = std::min(t - *previousFrame, 0.0f) / frameDifference;
-		}
-
-		int component = 3;
-		if (channel.path == "rotation") component = 4;
-
-		const auto previousValuePtr = channel.values.begin() + ((previousFrame - channel.keyframeTimes.begin()) * component);
-		const auto nextValuePtr = channel.values.begin() + ((nextFrame - channel.keyframeTimes.begin()) * component);
-
-		if (channel.path == "rotation")
-		{
-			glm::quat previousR = {
-				*(previousValuePtr + 3), // W -- I hate this :,(
-				*previousValuePtr, // X
-				*(previousValuePtr + 1), // Y
-				*(previousValuePtr + 2) // Z
-			};
-
-			glm::quat nextR = {
-				*(nextValuePtr + 3), // W
-				*nextValuePtr, // X
-				*(nextValuePtr + 1), // Y
-				*(nextValuePtr + 2) // Z
-			};
-
-			glm::quat newR = glm::slerp(previousR, nextR, difference);
-
-			nodeOffsets[channel.target].rotation = newR;
-		}
-		else
-		{
-			glm::vec3 previous = {
-				*previousValuePtr,
-				*(previousValuePtr + 1),
-				*(previousValuePtr + 2),
-			};
-
-			glm::vec3 next = {
-				*nextValuePtr,
-				*(nextValuePtr + 1),
-				*(nextValuePtr + 2),
-			};
-
-			glm::vec3 newVector = glm::mix(previous, next, difference);
-
-			if (channel.path == "translation")
-			{
-				nodeOffsets[channel.target].translation = newVector;
-			}
-			else
-			{
-				nodeOffsets[channel.target].scale = newVector;
-			}
-		}
-	}
-
-	return nodeOffsets;
-}
-
-void Model::selectAnimation(std::string animationName)
-{
-	if (animations.find(animationName) == animations.end())
-	{
-		spdlog::warn("Invalid animation: {}", animationName);
-		return;
-	}
-
-	currentAnimation = animationName;
-
-	blendElapsed = 0.0f;
-	blendDuration = 0.0f;
-	staticBlend = -1.0f;
-	nextAnimation = "";
-	fit = false;
-}
-
-void Model::advanceAnimation(float deltaTime)
-{
-	// Find the current animation
-	if (currentAnimation == "")
-		return;
-
-	auto& anim = animations[currentAnimation];
-
-	// Advance current animation
-	anim.elapsed += deltaTime;
-	if (anim.loop) anim.elapsed = std::fmod(anim.elapsed, anim.duration);
-
-	float blendFactor = 0.0f;
-
-	// Calculate blend factor
-	if (blendDuration > 0.0f)
-	{
-		blendFactor = blendElapsed / blendDuration;
-	}
-
-	// If we have set a static blend factor then just use that
-	if (staticBlend != -1.0f) blendFactor = staticBlend;
-
-	const std::unordered_map<int, TransformOffset> offsets = getFrame(currentAnimation, anim.elapsed);
-	std::unordered_map<int, TransformOffset> nextOffsets = offsets;
-
-	// Find next animation if it is required
-	if (nextAnimation != "" && blendFactor > 0.0f)
-	{
-		auto& nextAnim = animations[nextAnimation];
-
-		// And advance it... ( if fit is enabled stretch to fit the first animation... ? ) 
-		nextAnim.elapsed += fit ? deltaTime * (anim.duration / nextAnim.duration) : deltaTime;
-		if (nextAnim.loop) nextAnim.elapsed = std::fmod(nextAnim.elapsed, nextAnim.duration);
-
-		// And load its offsets
-		nextOffsets = getFrame(nextAnimation, nextAnim.elapsed);
-	}
-
-	// Apply the blend
-	for (const auto& [i, offset] : offsets)
-	{
-		nodes[i]->rotation = glm::slerp(offset.rotation, nextOffsets[i].rotation, blendFactor);
-
-		nodes[i]->translation = glm::mix(offset.translation, nextOffsets[i].translation, blendFactor);
-
-		nodes[i]->scale = glm::mix(offset.scale, nextOffsets[i].scale, blendFactor);
-	}
-
-	// If the blend is finished, clean up
-	if (blendElapsed >= blendDuration && (staticBlend == -1.0f || staticBlend == 1.0f))
-	{
-		blendElapsed = 0.0f;
-		blendDuration = 0.0f;
-		staticBlend = 0.0f;
-		currentAnimation = nextAnimation;
-		nextAnimation = 0.0f;
-	}
-	else
-	{
-		// Otherwise advance the blend
-		blendElapsed += deltaTime;
-	}
-}
-
-void Model::setJoints(const std::unordered_map<int, TransformOffset>& offsets)
-{
-	for (const auto& [i, offset] : offsets)
-	{
-		nodes[i]->rotation = offset.rotation;
-
-		nodes[i]->translation = offset.translation;
-
-		nodes[i]->scale = offset.scale;
-	}
-}
-
-Model::Model(std::filesystem::path gltfPath, std::string root)
-	: buffers(0), textures(0), primitives(0), currentAnimation(""), nextAnimation(""), rootNode(root)
-{
 	tinygltf::TinyGLTF loader;
-	//loader.SetImageLoader(imageLoad, nullptr);
-
-	tinygltf::Model model;
 
 	std::string error;
 	std::string warning;
 
 	bool ret = false;
 	if (gltfPath.extension() == ".glb")
-		ret = loader.LoadBinaryFromFile(&model, &error, &warning, gltfPath.string());
+		ret = loader.LoadBinaryFromFile(&model.value(), &error, &warning, gltfPath.string());
 	else
-		ret = loader.LoadASCIIFromFile(&model, &error, &warning, gltfPath.string());
+		ret = loader.LoadASCIIFromFile(&model.value(), &error, &warning, gltfPath.string());
 
-	if (!warning.empty()) 
+	if (!warning.empty())
 	{
 		spdlog::warn(warning);
 	}
 
-	if (!error.empty()) 
+	if (!error.empty())
 	{
 		spdlog::error(error);
 	}
 
 	if (!ret) {
-		spdlog::error("Failed to load file: {}\n\n", gltfPath.string());
-		return;
+		spdlog::error("Failed to load file: {}\n\n", gltfPath.filename().string());
+		throw std::runtime_error(std::format("Failed to load file: {}", gltfPath.string()));
 	}
 
-	spdlog::trace("Loading model: {}", gltfPath.filename().string());
-
-	loadBuffers(model);
-	
-	loadTextures(model);
-
-	transformation = std::make_shared<TransformNode>();
-
-	loadNodes(model);
-
-	loadSkins(model);
-	loadAnimations(model);
-
-	// tinygltf::Model goes out of scope and all host memory is deleted
+	spdlog::trace("Loaded model from disk: {}", gltfPath.filename().string());
 }
 
-Model::~Model()
+RenderableModel::RenderableModel(const LoadedModel& modelData, bool isStatic)
+	: rootNode(modelData.rootNode), transformation(std::make_shared<TransformNode>()), isStatic(isStatic)
+{
+	loadBuffers(modelData.model);
+
+	loadTextures(modelData.model);
+
+	loadNodes(modelData.model);
+
+	loadSkins(modelData.model);
+
+	loadAnimations(modelData.model);
+}
+
+void RenderableModel::setJoints(const std::unordered_map<int, TransformOffset>& offsets)
+{
+	for (const auto& [i, offset] : offsets)
+	{
+		nodes[i]->setRotation(offset.rotation);
+
+		nodes[i]->setTranslation(offset.translation);
+
+		nodes[i]->setScale(offset.scale);
+	}
+}
+
+RenderableModel::~RenderableModel()
 {
 	glDeleteBuffers(static_cast<GLsizei>(buffers.size()), buffers.data());
 	glDeleteTextures(static_cast<GLsizei>(textures.size()), textures.data());
 }
 
 // todo: rewrite all these functions
-std::shared_ptr<Model> Model::constructUnitSphere(unsigned int columns, unsigned int rows)
+std::shared_ptr<RenderableModel> RenderableModel::constructUnitSphere(unsigned int columns, unsigned int rows)
 {
 	GLuint vertexArray, vertexBuffer, indicesBuffer;
 	glGenVertexArrays(1, &vertexArray);
@@ -409,12 +165,12 @@ std::shared_ptr<Model> Model::constructUnitSphere(unsigned int columns, unsigned
 	sphere.componentType = GL_UNSIGNED_INT;
 
 	const auto buffers = { vertexBuffer, indicesBuffer };
-	const auto primitives = { sphere };
+	const auto primitives = { std::make_shared<MeshPrimitive>(sphere) };
 
-	return std::make_shared<Model>(buffers, primitives, std::vector<GLuint>());
+	return std::make_shared<RenderableModel>(buffers, primitives, std::vector<GLuint>());
 }
 
-std::shared_ptr<Model> Model::constructUnitCube()
+std::shared_ptr<RenderableModel> RenderableModel::constructUnitCube()
 {
 	const std::vector<GLfloat> vertices = {
 		// back face
@@ -515,12 +271,12 @@ std::shared_ptr<Model> Model::constructUnitCube()
 	cube.componentType = GL_UNSIGNED_INT;
 
 	const auto buffers = { vertexBuffer, indicesBuffer };
-	const auto primitives = { cube };
+	const auto primitives = { std::make_shared<MeshPrimitive>(cube) };
 
-	return std::make_shared<Model>(buffers, primitives, std::vector<GLuint>());
+	return std::make_shared<RenderableModel>(buffers, primitives, std::vector<GLuint>());
 }
 
-std::shared_ptr<Model> Model::constructUnitQuad()
+std::shared_ptr<RenderableModel> RenderableModel::constructUnitQuad()
 {
 	std::vector<float> vertices = {
 		// positions       // normals         // texture Coords
@@ -568,50 +324,12 @@ std::shared_ptr<Model> Model::constructUnitQuad()
 	quad.componentType = GL_UNSIGNED_INT;
 
 	const auto buffers = { vertexBuffer, indicesBuffer };
-	const auto primitives = { quad };
+	const auto primitives = { std::make_shared<MeshPrimitive>(quad) };
 
-	return std::make_shared<Model>(buffers, primitives, std::vector<GLuint>());
+	return std::make_shared<RenderableModel>(buffers, primitives, std::vector<GLuint>());
 }
 
-const glm::vec3 Model::getVelocity()
-{
-	if (currentAnimation == "")
-		return glm::vec3(0.0f);
-
-	glm::vec3 v = animations[currentAnimation].velocity;
-	glm::vec3 u = v;
-
-	glm::vec3 result = v;
-
-	if (nextAnimation != "")
-		u = animations[nextAnimation].velocity;
-
-	if (staticBlend > 0.0f)
-	{
-		float avgSpeed = (glm::length(v) + glm::length(u)) / 2;
-		result = glm::normalize(glm::mix(v, u, staticBlend)) * glm::length(v);
-	}
-
-	else if (blendElapsed < blendDuration)
-	{
-		result = glm::mix(v, u, blendElapsed / blendDuration);
-	}
-
-	return result;
-}
-
-std::shared_ptr<TransformNode> Model::getNode(const std::string name)
-{
-	auto idx = std::find_if(nodes.begin(), nodes.end(), [&](std::shared_ptr<TransformNode> n)
-		{
-			return n->name == name;
-		}
-	);
-
-	return *idx;
-}
-
-void Model::loadBuffers(const tinygltf::Model& model)
+void RenderableModel::loadBuffers(const tinygltf::Model& model)
 {
 	buffers.resize(model.bufferViews.size(), 0); // Resize the buffer container
 
@@ -634,98 +352,104 @@ void Model::loadBuffers(const tinygltf::Model& model)
 	}
 }
 
-void Model::loadAnimations(const tinygltf::Model& model)
+void RenderableModel::loadAnimations(const tinygltf::Model& model)
 {
-	for (const auto& animation : model.animations)
-	{
-		Animation anim;
-		float maxDuration = 0.0f;
+	std::mutex m;
 
-		std::vector<Joint>::iterator rootJointIdx = joints.end();
-		int rootNodeIdx = -1;
-		
-		float start = 0.0f;
-		glm::vec3 initialPos, finalPos;
-
-		for (const auto& channel : animation.channels)
+	std::for_each(std::execution::par, model.animations.begin(), model.animations.end(), 
+		[&](const tinygltf::Animation& animation)
 		{
-			AnimationChannel animationChannel;
-			animationChannel.target = channel.target_node;
-			animationChannel.path = channel.target_path;
+			spdlog::trace("Loading animation: {}", animation.name);
 
-			const auto& sampler = animation.samplers[channel.sampler];
+			Animation anim;
+			float maxDuration = 0.0f;
 
-			const auto& inputAccessor = model.accessors[sampler.input];
+			std::vector<Joint>::iterator rootJointIdx = joints.end();
+			int rootNodeIdx = -1;
 
-			if (inputAccessor.maxValues[0] > maxDuration) maxDuration = inputAccessor.maxValues[0];
-			if (inputAccessor.minValues[0] > start) start = inputAccessor.minValues[0];
+			float start = 0.0f;
+			glm::vec3 initialPos, finalPos;
 
-			animationChannel.keyframeTimes = accessorToFloats(model, inputAccessor);
-
-			const auto& outputAccessor = model.accessors[sampler.output];
-
-			animationChannel.values = accessorToFloats(model, outputAccessor);
-			 
-			if (nodes[animationChannel.target]->name == rootNode
-				&& animationChannel.path == "translation")
+			for (const auto& channel : animation.channels)
 			{
-				// simple find the joint needed -- code is getting bad but this is only done once!
-				rootJointIdx = std::find_if(joints.begin(), joints.end(), [&](const Joint& j) {
-					return j.nodeIdx == animationChannel.target;
-				});
-				rootNodeIdx = animationChannel.target;
+				AnimationChannel animationChannel;
+				animationChannel.target = channel.target_node;
+				animationChannel.path = channel.target_path;
 
-				initialPos = glm::make_vec3(&animationChannel.values[0]);
-				finalPos = glm::make_vec3(&animationChannel.values[animationChannel.values.size() - 3]);
-			}
+				const auto& sampler = animation.samplers[channel.sampler];
 
-			anim.channels.push_back(animationChannel);
-		}
+				const auto& inputAccessor = model.accessors[sampler.input];
 
-		anim.duration = maxDuration;
+				if (inputAccessor.maxValues[0] > maxDuration) maxDuration = inputAccessor.maxValues[0];
+				if (inputAccessor.minValues[0] > start) start = inputAccessor.minValues[0];
 
-		spdlog::trace("Loaded animation : {}, duration : {}", animation.name, anim.duration);
+				animationChannel.keyframeTimes = accessorToFloats(model, inputAccessor);
 
-		float realDuration = maxDuration - start;
+				const auto& outputAccessor = model.accessors[sampler.output];
 
-		glm::vec3 naiveVelocity = (finalPos - initialPos) / realDuration;
+				animationChannel.values = accessorToFloats(model, outputAccessor);
 
-		if (rootNodeIdx != -1)
-		{
-			// Now convert these back into world space and calculate the bounds properly
-			initialPos =
-				nodes[rootNodeIdx]->getWorldTransform() *
-				glm::inverse(rootJointIdx->inverseBindMatrix) * 
-				glm::vec4(initialPos, 1.0f);
-
-			finalPos =
-				nodes[rootNodeIdx]->getWorldTransform() *
-				glm::inverse(rootJointIdx->inverseBindMatrix) *
-				glm::vec4(finalPos, 1.0f);
-
-			anim.rootOffset = (finalPos - initialPos);
-			anim.velocity = anim.rootOffset / realDuration;
-		}
-
-		for (auto& channel : anim.channels)
-		{
-			if (channel.path == "translation" && channel.target == rootNodeIdx)
-			{
-				for (size_t i = 0; i < channel.keyframeTimes.size(); i++)
+				if (nodes[animationChannel.target]->name == rootNode
+					&& animationChannel.path == "translation")
 				{
-					channel.values[(i * 3)] -= naiveVelocity.x * channel.keyframeTimes[i];
-					channel.values[(i * 3) + 1] -= naiveVelocity.y * channel.keyframeTimes[i];
-					channel.values[(i * 3) + 2] -= naiveVelocity.z * channel.keyframeTimes[i];
+					// simple find the joint needed -- code is getting bad but this is only done once!
+					rootJointIdx = std::find_if(joints.begin(), joints.end(), [&](const Joint& j) {
+						return j.nodeIdx == animationChannel.target;
+						});
+					rootNodeIdx = animationChannel.target;
+
+					initialPos = glm::make_vec3(&animationChannel.values[0]);
+					finalPos = glm::make_vec3(&animationChannel.values[animationChannel.values.size() - 3]);
 				}
 
+				anim.channels.push_back(animationChannel);
 			}
-		}
 
-		animations[animation.name] = anim;
-	}
+			anim.duration = maxDuration;
+
+			float realDuration = maxDuration - start;
+
+			glm::vec3 naiveVelocity = (finalPos - initialPos) / realDuration;
+
+			if (rootNodeIdx != -1)
+			{
+				// Now convert these back into world space and calculate the bounds properly
+				initialPos =
+					nodes[rootNodeIdx]->getWorldTransform() *
+					glm::inverse(rootJointIdx->inverseBindMatrix) *
+					glm::vec4(initialPos, 1.0f);
+
+				finalPos =
+					nodes[rootNodeIdx]->getWorldTransform() *
+					glm::inverse(rootJointIdx->inverseBindMatrix) *
+					glm::vec4(finalPos, 1.0f);
+
+				anim.rootOffset = (finalPos - initialPos);
+				anim.velocity = anim.rootOffset / realDuration;
+			}
+
+			for (auto& channel : anim.channels)
+			{
+				if (channel.path == "translation" && channel.target == rootNodeIdx)
+				{
+					for (size_t i = 0; i < channel.keyframeTimes.size(); i++)
+					{
+						channel.values[(i * 3)] -= naiveVelocity.x * channel.keyframeTimes[i];
+						channel.values[(i * 3) + 1] -= naiveVelocity.y * channel.keyframeTimes[i];
+						channel.values[(i * 3) + 2] -= naiveVelocity.z * channel.keyframeTimes[i];
+					}
+
+				}
+			}
+
+			std::lock_guard<std::mutex> lock(m);
+			
+			animations[animation.name] = anim;
+		}
+	);
 }
 
-void Model::loadSkins(const tinygltf::Model& model)
+void RenderableModel::loadSkins(const tinygltf::Model& model)
 {
 	for (const auto& skin : model.skins)
 	{
@@ -742,7 +466,7 @@ void Model::loadSkins(const tinygltf::Model& model)
 	}
 }
 
-void Model::loadTextures(const tinygltf::Model& model)
+void RenderableModel::loadTextures(const tinygltf::Model& model)
 {
 	std::vector<GLint> internalFormats(model.textures.size(), GL_RGBA);
 
@@ -799,7 +523,7 @@ void Model::loadTextures(const tinygltf::Model& model)
 	glBindTexture(GL_TEXTURE_2D, 0);
 }
 
-void Model::loadNodes(const tinygltf::Model& model)
+void RenderableModel::loadNodes(const tinygltf::Model& model)
 {
 	nodes.reserve(model.nodes.size());
 	primitives.reserve(model.meshes.size());
@@ -812,32 +536,32 @@ void Model::loadNodes(const tinygltf::Model& model)
 
 		if (node.translation.size() == 3)
 		{
-			transformNode->translation = {
+			transformNode->setTranslation( {
 				static_cast<float>(node.translation.at(0)), static_cast<float>(node.translation.at(1)), static_cast<float>(node.translation.at(2))
-			};
+			} );
 		}
 
 		if (node.scale.size() == 3)
 		{
-			transformNode->scale = {
+			transformNode->setScale({
 				static_cast<float>(node.scale.at(0)), static_cast<float>(node.scale.at(1)), static_cast<float>(node.scale.at(2))
-			};
+				});
 		}
 
 		if (node.rotation.size() == 4)
 		{
 			// GLM quats go W X Y Z; tinyGLTF quats go X Y Z W
-			transformNode->rotation = {
+			transformNode->setRotation({
 				static_cast<float>(node.rotation.at(3)), static_cast<float>(node.rotation.at(0)), static_cast<float>(node.rotation.at(1)), static_cast<float>(node.rotation.at(2))
-			};
+				});
 		}
 
 		transformNode->name = node.name;
-		transformNode->parent = transformation;
+		transformation->addChild(transformNode);
 
 		for (size_t j = 0; j < node.children.size(); j++)
 		{
-			nodes[node.children[j]]->parent = transformNode;
+			transformNode->addChild(nodes[node.children[j]]);
 		}
 
 		nodes.push_back(transformNode);
@@ -854,29 +578,29 @@ void Model::loadNodes(const tinygltf::Model& model)
 	}
 }
 
-void Model::loadPrimitive(const tinygltf::Model& model, const tinygltf::Primitive& primitive, std::shared_ptr<TransformNode> transformNode)
+void RenderableModel::loadPrimitive(const tinygltf::Model& model, const tinygltf::Primitive& primitive, std::shared_ptr<TransformNode> transformNode)
 {
-	MeshPrimitive meshPrimitive;
+	std::shared_ptr<MeshPrimitive> meshPrimitive = std::make_shared<MeshPrimitive>();
 
 	const tinygltf::Accessor& indexAccessor = model.accessors.at(primitive.indices);
 
-	meshPrimitive.mode = primitive.mode;
-	meshPrimitive.indicesBuffer = buffers.at(indexAccessor.bufferView);
-	meshPrimitive.count = indexAccessor.count;
-	meshPrimitive.componentType = indexAccessor.componentType;
-	meshPrimitive.byteOffset = indexAccessor.byteOffset;
+	meshPrimitive->mode = primitive.mode;
+	meshPrimitive->indicesBuffer = buffers.at(indexAccessor.bufferView);
+	meshPrimitive->count = indexAccessor.count;
+	meshPrimitive->componentType = indexAccessor.componentType;
+	meshPrimitive->byteOffset = indexAccessor.byteOffset;
 
 	if (model.materials.size() > 0)
 	{
-		meshPrimitive.materialDesc = model.materials.at(primitive.material);
+		meshPrimitive->materialDesc = model.materials.at(primitive.material);
 	}
 	else
 	{
-		meshPrimitive.materialDesc = tinygltf::Material();
+		meshPrimitive->materialDesc = tinygltf::Material();
 	}
 
-	glGenVertexArrays(1, &meshPrimitive.vertexArray);
-	glBindVertexArray(meshPrimitive.vertexArray);
+	glGenVertexArrays(1, &meshPrimitive->vertexArray);
+	glBindVertexArray(meshPrimitive->vertexArray);
 
 	for (const auto& attrib : primitive.attributes)
 	{
@@ -910,30 +634,29 @@ void Model::loadPrimitive(const tinygltf::Model& model, const tinygltf::Primitiv
 		}
 	}
 
-	meshPrimitive.transform = transformNode;
+	meshPrimitive->transform = transformNode;
+	
+	primitives.push_back(meshPrimitive);
 
-	if (meshPrimitive.materialDesc.alphaMode == "OPAQUE")
+	if (meshPrimitive->materialDesc.alphaMode == "OPAQUE")
 		opaquePrimitives.push_back(meshPrimitive);
 	else
 		translucentPrimitives.push_back(meshPrimitive);
 
-	primitives.push_back(meshPrimitive);
 }
 
-// Chatgpt :?
-std::vector<float> Model::accessorToFloats(const tinygltf::Model& model, const tinygltf::Accessor& accessor)
+// chatgpt because im lazy :<|
+std::vector<float> RenderableModel::accessorToFloats(const tinygltf::Model& model, const tinygltf::Accessor& accessor)
 {
 	std::vector<float> result;
 
 	// Ensure accessor's buffer view is valid
 	if (accessor.bufferView < 0 || accessor.bufferView >= model.bufferViews.size()) {
-		std::cerr << "Invalid buffer view index.\n";
 		return result;
 	}
 
 	const tinygltf::BufferView& bufferView = model.bufferViews[accessor.bufferView];
 	if (bufferView.buffer < 0 || bufferView.buffer >= model.buffers.size()) {
-		std::cerr << "Invalid buffer index.\n";
 		return result;
 	}
 
@@ -945,14 +668,12 @@ std::vector<float> Model::accessorToFloats(const tinygltf::Model& model, const t
 	// Get the component size
 	size_t componentSize = tinygltf::GetComponentSizeInBytes(accessor.componentType);
 	if (componentSize == 0) {
-		std::cerr << "Invalid component type.\n";
 		return result;
 	}
 
 	// Number of components per element (e.g., VEC3 has 3 components)
 	int numComponents = tinygltf::GetNumComponentsInType(accessor.type);
 	if (numComponents == 0) {
-		std::cerr << "Invalid type.\n";
 		return result;
 	}
 
@@ -1006,7 +727,6 @@ std::vector<float> Model::accessorToFloats(const tinygltf::Model& model, const t
 				break;
 			}
 			default:
-				std::cerr << "Unsupported component type.\n";
 				return {};
 			}
 		}
@@ -1014,3 +734,7 @@ std::vector<float> Model::accessorToFloats(const tinygltf::Model& model, const t
 
 	return result;
 }
+
+
+
+

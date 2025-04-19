@@ -1,6 +1,19 @@
 #version 450
 	   
-#include "fragment_shared.glsl"
+struct MaterialInput
+{
+    bool isTextureEnabled;
+    sampler2D textureMap;
+    vec4 factor;
+};
+
+in GS_OUT
+{
+    vec2 vTexCoords;
+    vec3 vWorldPos;
+    vec3 vNormal;
+    vec3 vViewPos;
+} fs_in;
 
 uniform MaterialInput uBaseColour;
 
