@@ -155,8 +155,8 @@ int main()
 	PBRRenderer renderer(glm::ivec2(WIDTH, HEIGHT), std::make_shared<OrbitCamera>(std::move(orbitCamera)));
 
 	std::vector<std::string> modelPaths = {
-		"C:\\Users\\Niall Townley\\Documents\\Source\\Viper\\Models\\Sponza\\glTF\\Sponza.gltf",
-		"C:\\Users\\Niall Townley\\Documents\\Source\\Viper\\Models\\Statue\\greek-slave-plaster-cast-150k-4096-web.gltf",
+		"C:\\Users\\Niall Townley\\Documents\\Source\\Viper\\Models\\Sponza\\glTF\\Sponza.gltf"
+		//"C:\\Users\\Niall Townley\\Documents\\Source\\Viper\\Models\\Statue\\greek-slave-plaster-cast-150k-4096-web.gltf",
 		//"../Models/Board/Board.glb"
 	};
 	std::vector<RawModel> loadedModels;

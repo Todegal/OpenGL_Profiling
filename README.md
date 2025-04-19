@@ -2,6 +2,8 @@
 
 This project has nothing to do with profiling at all, it's just another little OpenGL thing. 
 
+![Sponza Scene](Screenshots\sponza_19_04_25.png)
+
 ## -- Features --
 - PBR rendering
 - Deferred rendering
