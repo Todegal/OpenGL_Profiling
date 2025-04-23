@@ -49,7 +49,7 @@ public:
 	~CharacterController();
 
 	void update(Timer::f_seconds dT);
-	void showInfo(imgui_data data);
+	void showInfo(imgui_data& data);
 
 public:
 	const std::shared_ptr<RenderableModel> getModel() { return characterModel; }

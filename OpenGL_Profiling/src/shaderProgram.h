@@ -26,6 +26,8 @@ public:
 
 public:
 
+	const GLuint getProgramId() const { return programId; }
+
 	void addShader(GLenum stage, const std::filesystem::path shaderPath);
 	
 	void linkProgram();

@@ -152,6 +152,7 @@ int main()
 
 	CharacterController character(input);
 
+	//PBRRenderer_old renderer(glm::ivec2(WIDTH, HEIGHT), std::make_shared<OrbitCamera>(std::move(orbitCamera)));
 	PBRRenderer renderer(glm::ivec2(WIDTH, HEIGHT), std::make_shared<OrbitCamera>(std::move(orbitCamera)));
 
 	std::vector<std::string> modelPaths = {
@@ -179,29 +180,29 @@ int main()
 	models.push_back(character.getModel());
 
 	std::vector<Light> lights;
-	//lights.push_back(
-	//	{
-	//		{ 1, 1, 0 },
-	//		{ 1, 0, 0 },
-	//		10.0f, Light::POINT
-	//	}
-	//);
+	lights.push_back(
+		{
+			{ 1, 1, 0 },
+			{ 1, 0, 0 },
+			10.0f, Light::POINT
+		}
+	);
 
-	//lights.push_back(
-	//	{
-	//		{ 0, 2, 0 },
-	//		{ 0, 1, 0 },
-	//		10.0f, Light::POINT
-	//	}
-	//);
+	lights.push_back(
+		{
+			{ 0, 2, 0 },
+			{ 0, 1, 0 },
+			10.0f, Light::POINT
+		}
+	);
 
-	//lights.push_back(
-	//	{
-	//		{ 0, 1, 1 },
-	//		{ 0, 0, 1 },
-	//		10.0f, Light::POINT
-	//	}
-	//);
+	lights.push_back(
+		{
+			{ 0, 1, 1 },
+			{ 0, 0, 1 },
+			10.0f, Light::POINT
+		}
+	);
 
 	int nLights = 0;
 
@@ -223,7 +224,7 @@ int main()
 
 	scene->sceneLights = lights;
 	scene->sceneModels = models;
-	scene->enviromentMap = "C://Users/Niall Townley/Documents/Source/Viper/Environments/818-hdri-skies-com.hdr";
+	scene->environmentMap = "C://Users/Niall Townley/Documents/Source/Viper/Environments/818-hdri-skies-com.hdr";
 
 	renderer.loadScene(scene);
 
@@ -268,9 +269,9 @@ int main()
 		ImGui::NewFrame();
 
 		drawMenuBar(imguiData);
-		if (imguiData.showRenderFlags) { renderer.drawFlagsDialog(imguiData); }
 		if (imguiData.showMetrics) { metrics(t, imguiData); }
 		if (imguiData.showCharacterInfo) { character.showInfo(imguiData); }
+		if (imguiData.showRenderDialog) { renderer.imguiFrame(imguiData); }
 
 		if (!ImGui::GetIO().WantCaptureKeyboard && !ImGui::GetIO().WantCaptureMouse)
 			input.pollInputs();

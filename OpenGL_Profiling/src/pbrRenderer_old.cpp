@@ -1,4 +1,4 @@
-#include "pbrRenderer.h"
+#include "pbrRenderer_old.h"
 
 #include "orbitCamera.h"
 
@@ -13,7 +13,7 @@
 #include <numeric>
 #include <execution>
 
-PBRRenderer::PBRRenderer(glm::ivec2 screenSize, std::shared_ptr<Camera> cameraPtr)
+PBRRenderer_old::PBRRenderer_old(glm::ivec2 screenSize, std::shared_ptr<Camera> cameraPtr)
 	: dimensions(screenSize), viewCameraPtr(cameraPtr)
 {
 	//sphere(RenderableModel::constructUnitSphere(16, 16).getPrimitives()[0]),
@@ -60,7 +60,7 @@ PBRRenderer::PBRRenderer(glm::ivec2 screenSize, std::shared_ptr<Camera> cameraPt
 	flags[HDR_PASS_ENABLED] = true;
 }
 
-PBRRenderer::~PBRRenderer()
+PBRRenderer_old::~PBRRenderer_old()
 {
 	clearScene();
 
@@ -70,11 +70,11 @@ PBRRenderer::~PBRRenderer()
 	cleanHdrPass();
 }
 
-void PBRRenderer::loadScene(std::shared_ptr<Scene> s)
+void PBRRenderer_old::loadScene(std::shared_ptr<Scene> s)
 {
 	scene = s;
 
-	if (scene->enviromentMap != "")
+	if (scene->environmentMap != "")
 	{
 		loadEnvironmentMap();
 	}
@@ -84,7 +84,7 @@ void PBRRenderer::loadScene(std::shared_ptr<Scene> s)
 	resizeShadowMaps();
 }
 
-void PBRRenderer::clearScene()
+void PBRRenderer_old::clearScene()
 {
 	scene->sceneModels.clear();
 	scene->sceneLights.clear();
@@ -93,13 +93,13 @@ void PBRRenderer::clearScene()
 	glDeleteBuffers(1, &jointsBuffer);
 }
 
-void PBRRenderer::setCamera(std::shared_ptr<Camera> cameraPtr)
+void PBRRenderer_old::setCamera(std::shared_ptr<Camera> cameraPtr)
 {
 	viewCameraPtr = cameraPtr;
 	generateProjectionMatrix();
 }
 
-void PBRRenderer::frame()
+void PBRRenderer_old::frame()
 {
 	loadLights();
 	//resizeShadowMaps();
@@ -263,7 +263,7 @@ void PBRRenderer::frame()
 		hdrPass();
 }
 
-void PBRRenderer::setFlag(const int flag, bool value)
+void PBRRenderer_old::setFlag(const int flag, bool value)
 {
 	assert(flag >= 0);
 	assert(flag < NUM_FLAGS);
@@ -271,7 +271,7 @@ void PBRRenderer::setFlag(const int flag, bool value)
 	flags[flag] = value;
 }
 
-void PBRRenderer::drawFlagsDialog(imgui_data data)
+void PBRRenderer_old::drawFlagsDialog(imgui_data data)
 {
 	int windowFlags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize;
 
@@ -300,7 +300,7 @@ void PBRRenderer::drawFlagsDialog(imgui_data data)
 	
 	if (flags[ENVIRONMENT_MAP_ENABLED])
 	{
-		ImGui::Text("Map: %s", scene->enviromentMap.c_str());
+		ImGui::Text("Map: %s", scene->environmentMap.c_str());
 		ImGui::SliderFloat("Factor", &environmentMapFactor, 0.0f, 1.0f);
 
 		ImGui::Checkbox("Emulate Sun Enabled", &flags[EMULATE_SUN_ENABLED]);
@@ -316,7 +316,7 @@ void PBRRenderer::drawFlagsDialog(imgui_data data)
 	ImGui::End();
 }
 
-void PBRRenderer::resize(glm::ivec2 screenSize)
+void PBRRenderer_old::resize(glm::ivec2 screenSize)
 {
 	dimensions = screenSize;
 
@@ -329,7 +329,7 @@ void PBRRenderer::resize(glm::ivec2 screenSize)
 	resizeHdrPass();
 }
 
-const std::vector<glm::vec4> PBRRenderer::getFrustumCorners(const glm::mat4& pojectionViewMatrix) const
+const std::vector<glm::vec4> PBRRenderer_old::getFrustumCorners(const glm::mat4& pojectionViewMatrix) const
 {
 	const glm::mat4 invMatrix = glm::inverse(pojectionViewMatrix);
 
@@ -348,7 +348,7 @@ const std::vector<glm::vec4> PBRRenderer::getFrustumCorners(const glm::mat4& poj
 	return corners;
 }
 
-void PBRRenderer::generateProjectionMatrix()
+void PBRRenderer_old::generateProjectionMatrix()
 {
 	constexpr float farPlane = 100.0f;
 	float aspectRatio = static_cast<float>(dimensions.x) / static_cast<float>(dimensions.y);
@@ -360,7 +360,7 @@ void PBRRenderer::generateProjectionMatrix()
 	}
 }
 
-void PBRRenderer::renderPrimitive(const std::shared_ptr<MeshPrimitive> prim, ShaderProgram& program)
+void PBRRenderer_old::renderPrimitive(const std::shared_ptr<MeshPrimitive> prim, ShaderProgram& program)
 {
 	program.setMat4("uModel", prim->transform->getWorldTransform());
 	glm::mat3 NM = prim->transform->getWorldTransform();
@@ -378,7 +378,7 @@ void PBRRenderer::renderPrimitive(const std::shared_ptr<MeshPrimitive> prim, Sha
 	glBindVertexArray(0);
 }
 
-void PBRRenderer::loadMaterialProperties(const std::vector<GLuint>& textures, const tinygltf::Material& materialDesc, ShaderProgram& shader)
+void PBRRenderer_old::loadMaterialProperties(const std::vector<GLuint>& textures, const tinygltf::Material& materialDesc, ShaderProgram& shader)
 {
 	const tinygltf::PbrMetallicRoughness& pbr = materialDesc.pbrMetallicRoughness;
 
@@ -441,16 +441,16 @@ void PBRRenderer::loadMaterialProperties(const std::vector<GLuint>& textures, co
 	}
 }
 
-void PBRRenderer::loadEnvironmentMap()
+void PBRRenderer_old::loadEnvironmentMap()
 {
 	// Load the map into a 2d texture
 	stbi_set_flip_vertically_on_load(true);
 
 	int width, height, channels;
-	float* data = stbi_loadf(scene->enviromentMap.c_str(), &width, &height, &channels, 3);
+	float* data = stbi_loadf(scene->environmentMap.c_str(), &width, &height, &channels, 3);
 	if (!data || width + height < 2 || channels < 3)
 	{
-		spdlog::error("Failed to load environment map: {}", scene->enviromentMap);
+		spdlog::error("Failed to load environment map: {}", scene->environmentMap);
 		flags[ENVIRONMENT_MAP_ENABLED] = false;
 		return;
 	}
@@ -577,7 +577,7 @@ void PBRRenderer::loadEnvironmentMap()
 // calculate the brightness of said pixel
 // multiply by (1 - environmentMapFactor) to try and account for the remaining light...
 // let's go!
-void PBRRenderer::determineSunProperties(float* data, int width, int height, int channels)
+void PBRRenderer_old::determineSunProperties(float* data, int width, int height, int channels)
 {
 	float maxLuminance = -1.0f;
 	int maxX = 0, maxY = 0;
@@ -644,7 +644,7 @@ void PBRRenderer::determineSunProperties(float* data, int width, int height, int
 
 }
 
-void PBRRenderer::prefilterEnvironmentMap()
+void PBRRenderer_old::prefilterEnvironmentMap()
 {
 	// First generate the irradiance map
 	glGenTextures(1, &irradianceMap);
@@ -842,7 +842,7 @@ void PBRRenderer::prefilterEnvironmentMap()
 	glDeleteFramebuffers(1, &captureCubemapFBO);
 }
 
-void PBRRenderer::loadLights()
+void PBRRenderer_old::loadLights()
 {
 	// Parse lights, and calculate radii, and split them based on type (only for shadows)
 
@@ -943,7 +943,7 @@ void PBRRenderer::loadLights()
 	resizeShadowMaps();
 }
 
-void PBRRenderer::initializeShadowMaps()
+void PBRRenderer_old::initializeShadowMaps()
 {
 	pointShadowMapShader.addShader(GL_VERTEX_SHADER, "shaders/model.vert.glsl");
 	pointShadowMapShader.addShader(GL_GEOMETRY_SHADER, "shaders/cubemapShader.geom.glsl");
@@ -988,7 +988,7 @@ void PBRRenderer::initializeShadowMaps()
 	glGenFramebuffers(1, &shadowMapFBO);
 }
 
-void PBRRenderer::resizeShadowMaps()
+void PBRRenderer_old::resizeShadowMaps()
 {
 	glBindTexture(GL_TEXTURE_CUBE_MAP_ARRAY, pointShadowCubemapArray);
 
@@ -1023,13 +1023,13 @@ void PBRRenderer::resizeShadowMaps()
 	glBindTexture(GL_TEXTURE_CUBE_MAP_ARRAY, 0);
 }
 
-void PBRRenderer::buildShadowMaps()
+void PBRRenderer_old::buildShadowMaps()
 {
 	buildPointShadowMaps();
 	buildDirectionalShadowMaps();
 }
 
-void PBRRenderer::buildPointShadowMaps()
+void PBRRenderer_old::buildPointShadowMaps()
 {
 	if (pointLights.size() == 0) return;
 
@@ -1095,7 +1095,7 @@ void PBRRenderer::buildPointShadowMaps()
 	glCullFace(GL_BACK);
 }
 
-void PBRRenderer::buildDirectionalShadowMaps()
+void PBRRenderer_old::buildDirectionalShadowMaps()
 {
 	if (directionalLights.size() == 0) return;
 
@@ -1148,14 +1148,14 @@ void PBRRenderer::buildDirectionalShadowMaps()
 	glCullFace(GL_BACK);
 }
 
-void PBRRenderer::cleanShadowMaps()
+void PBRRenderer_old::cleanShadowMaps()
 {
 	glDeleteTextures(1, &pointShadowCubemapArray);
 	glDeleteTextures(1, &directionalShadowMapArray);
 	glDeleteFramebuffers(1, &shadowMapFBO);
 }
 
-void PBRRenderer::initializeDeferredPass()
+void PBRRenderer_old::initializeDeferredPass()
 {
 	glGenFramebuffers(1, &gBufferFBO);
 	glBindFramebuffer(GL_FRAMEBUFFER, gBufferFBO);
@@ -1202,7 +1202,7 @@ void PBRRenderer::initializeDeferredPass()
 	deferredPassShader.addShader(GL_FRAGMENT_SHADER, "shaders/deferredShader.frag.glsl");
 }
 
-void PBRRenderer::resizeDeferredPass()
+void PBRRenderer_old::resizeDeferredPass()
 {
 	for (size_t i = 0; i < gBufferTextures.size(); i++)
 	{
@@ -1214,7 +1214,7 @@ void PBRRenderer::resizeDeferredPass()
 	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, dimensions.x, dimensions.y);
 }
 
-void PBRRenderer::buildGBuffer()
+void PBRRenderer_old::buildGBuffer()
 {
 	glBindFramebuffer(GL_FRAMEBUFFER, gBufferFBO);
 
@@ -1264,7 +1264,7 @@ void PBRRenderer::buildGBuffer()
 	glBindFramebuffer(GL_FRAMEBUFFER, flags[HDR_PASS_ENABLED] ? hdrPassFBO : 0);
 }
 
-void PBRRenderer::deferredPass()
+void PBRRenderer_old::deferredPass()
 {
 	buildGBuffer();
 
@@ -1359,24 +1359,24 @@ void PBRRenderer::deferredPass()
 
 }
 
-void PBRRenderer::cleanDeferredPass()
+void PBRRenderer_old::cleanDeferredPass()
 {
 	glDeleteTextures(gBufferTextures.size(), gBufferTextures.data());
 	glDeleteRenderbuffers(1, &gBufferDepth);
 	glDeleteFramebuffers(1, &gBufferFBO);
 }
 
-void PBRRenderer::initializeForwardPass()
+void PBRRenderer_old::initializeForwardPass()
 {
 	forwardPassShader.addShader(GL_VERTEX_SHADER, "shaders/modelView.vert.glsl");
 	forwardPassShader.addShader(GL_FRAGMENT_SHADER, "shaders/pbr.frag.glsl");
 }
 
-void PBRRenderer::resizeForwardPass()
+void PBRRenderer_old::resizeForwardPass()
 {
 }
 
-void PBRRenderer::forwardPass()
+void PBRRenderer_old::forwardPass()
 {
 	forwardPassShader.use();
 
@@ -1477,11 +1477,11 @@ void PBRRenderer::forwardPass()
 	glDisable(GL_BLEND);
 }
 
-void PBRRenderer::cleanForwardPass()
+void PBRRenderer_old::cleanForwardPass()
 {
 }
 
-void PBRRenderer::initializeHdrPass()
+void PBRRenderer_old::initializeHdrPass()
 {
 	glGenFramebuffers(1, &hdrPassFBO);
 	glBindFramebuffer(GL_FRAMEBUFFER, hdrPassFBO);
@@ -1516,7 +1516,7 @@ void PBRRenderer::initializeHdrPass()
 	hdrPassShader.addShader(GL_FRAGMENT_SHADER, "shaders/hdr.frag.glsl");
 }
 
-void PBRRenderer::resizeHdrPass()
+void PBRRenderer_old::resizeHdrPass()
 {
 	glBindRenderbuffer(GL_RENDERBUFFER, hdrPassDepthRBO);
 	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, dimensions.x, dimensions.y);
@@ -1525,7 +1525,7 @@ void PBRRenderer::resizeHdrPass()
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, dimensions.x, dimensions.y, 0, GL_RGBA, GL_FLOAT, 0);
 }
 
-void PBRRenderer::hdrPass()
+void PBRRenderer_old::hdrPass()
 {
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
@@ -1552,7 +1552,7 @@ void PBRRenderer::hdrPass()
 	glEnable(GL_DEPTH_TEST);
 }
 
-void PBRRenderer::cleanHdrPass()
+void PBRRenderer_old::cleanHdrPass()
 {
 	glDeleteTextures(1, &hdrPassColour);
 	glDeleteRenderbuffers(1, &hdrPassDepthRBO);

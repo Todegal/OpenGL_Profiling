@@ -36,6 +36,6 @@ void main()
     colour = ACESFilm(colour);
     colour = fromLinear(colour);
 
-	vFragColour = vec4(colour, 1.0);
-    // vFragColour = vec4(1, 0, 0, 1);
+	// vFragColour = vec4(colour, 1.0);
+    vFragColour = vec4(1, 0, 0, 1);
 }

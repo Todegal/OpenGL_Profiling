@@ -2,15 +2,16 @@
 
 #include <imgui.h>
 
-class PBRRenderer;
+class PBRRenderer_old;
 class Timer;
 
 struct imgui_data
 {
-	bool showRenderFlags;
 	bool showMetrics;
 	bool showCharacterInfo;
 	bool orbitCameraEnabled;
+
+	bool showRenderDialog;
 };
 
 void metrics(Timer& timer, imgui_data& data);

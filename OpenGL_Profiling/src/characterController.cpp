@@ -143,7 +143,7 @@ void CharacterController::update(Timer::f_seconds dT)
 	characterModel->getTransform()->setRotation(glm::quat(glm::vec3(0.0f, characterFacing / 2.0f, 0.0f)));
 }
 
-void CharacterController::showInfo(imgui_data data)
+void CharacterController::showInfo(imgui_data& data)
 {
 	int windowFlags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize;
 

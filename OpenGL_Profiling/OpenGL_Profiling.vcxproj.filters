@@ -16,42 +16,45 @@
     <Filter Include="Dependencies">
       <UniqueIdentifier>{7423b446-be5c-4725-8583-fd7d7e1d8c58}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Shaders">
-      <UniqueIdentifier>{298cd989-c101-4417-9171-a68ecfbcbbcb}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Dependencies\imgui">
       <UniqueIdentifier>{f904ee55-0137-4ea1-b4c8-8f2e41158782}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\Render Passes">
+      <UniqueIdentifier>{bb59c773-bb1d-4d7b-a89b-bdf28ffe5f24}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Render Passes">
+      <UniqueIdentifier>{1e011a01-83c0-45a5-8450-b4514df70e78}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="main.cpp">
+    <ClCompile Include="src\main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\shared\GLAD\src\glad.c">
       <Filter>Dependencies</Filter>
     </ClCompile>
-    <ClCompile Include="model.cpp">
+    <ClCompile Include="src\model.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="orbitCamera.cpp">
+    <ClCompile Include="src\orbitCamera.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="shaderProgram.cpp">
+    <ClCompile Include="src\shaderProgram.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="timer.cpp">
+    <ClCompile Include="src\timer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="pbrRenderer.h">
+    <ClCompile Include="src\pbrRenderer_old.h">
       <Filter>Header Files</Filter>
     </ClCompile>
-    <ClCompile Include="pbrRenderer.cpp">
+    <ClCompile Include="src\pbrRenderer_old.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="inputHandler.cpp">
+    <ClCompile Include="src\inputHandler.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="characterController.cpp">
+    <ClCompile Include="src\characterController.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\Dependencies\imgui-docking\imgui.cpp">
@@ -78,94 +81,53 @@
     <ClCompile Include="..\Dependencies\imgui-docking\backends\imgui_impl_opengl3.cpp">
       <Filter>Dependencies\imgui</Filter>
     </ClCompile>
-    <ClCompile Include="imguiWindows.cpp">
+    <ClCompile Include="src\imguiWindows.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="animationController.cpp">
+    <ClCompile Include="src\animationController.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\pbrRenderer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\renderPass.cpp">
+      <Filter>Source Files\Render Passes</Filter>
+    </ClCompile>
+    <ClCompile Include="src\forwardRenderPass.cpp">
+      <Filter>Source Files\Render Passes</Filter>
+    </ClCompile>
+    <ClCompile Include="src\hdrRenderPass.cpp">
+      <Filter>Source Files\Render Passes</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <Text Include="shaders\modelView.vert.glsl">
-      <Filter>Shaders</Filter>
-    </Text>
-    <Text Include="shaders\pbr.frag.glsl">
-      <Filter>Shaders</Filter>
-    </Text>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="shaders\unlit.frag.glsl">
-      <Filter>Shaders</Filter>
-    </None>
-    <None Include="shaders\depthShader.geom.glsl">
-      <Filter>Shaders</Filter>
-    </None>
-    <None Include="shaders\depthShader.frag.glsl">
-      <Filter>Shaders</Filter>
-    </None>
-    <None Include="shaders\model.vert.glsl">
-      <Filter>Shaders</Filter>
-    </None>
-    <None Include="shaders\vertex_shared.glsl">
-      <Filter>Shaders</Filter>
-    </None>
-    <None Include="shaders\screenQuad.vert.glsl">
-      <Filter>Shaders</Filter>
-    </None>
-    <None Include="shaders\gBuffer.frag.glsl">
-      <Filter>Shaders</Filter>
-    </None>
-    <None Include="shaders\fragment_shared.glsl">
-      <Filter>Shaders</Filter>
-    </None>
-    <None Include="shaders\pbr_functions.glsl">
-      <Filter>Shaders</Filter>
-    </None>
-    <None Include="shaders\deferredShader.frag.glsl">
-      <Filter>Shaders</Filter>
-    </None>
-    <None Include="shaders\instancedModelView.vert.glsl">
-      <Filter>Shaders</Filter>
-    </None>
-    <None Include="shaders\hdr.frag.glsl">
-      <Filter>Shaders</Filter>
-    </None>
     <None Include="..\Dependencies\imgui-docking\misc\debuggers\imgui.natstepfilter">
       <Filter>Dependencies\imgui</Filter>
     </None>
-    <None Include="shaders\backgroundCube.vert.glsl">
-      <Filter>Shaders</Filter>
-    </None>
-    <None Include="shaders\buildCubemap.frag.glsl">
-      <Filter>Shaders</Filter>
-    </None>
-    <None Include="shaders\cubemapShader.geom.glsl">
-      <Filter>Shaders</Filter>
-    </None>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="model.h">
+    <ClInclude Include="src\model.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="orbitCamera.h">
+    <ClInclude Include="src\orbitCamera.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="shaderProgram.h">
+    <ClInclude Include="src\shaderProgram.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="timer.h">
+    <ClInclude Include="src\timer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="camera.h">
+    <ClInclude Include="src\camera.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="scene.h">
+    <ClInclude Include="src\scene.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="inputHandler.h">
+    <ClInclude Include="src\inputHandler.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="characterController.h">
+    <ClInclude Include="src\characterController.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\Dependencies\imgui-docking\imconfig.h">
@@ -198,14 +160,26 @@
     <ClInclude Include="..\Dependencies\imgui-docking\backends\imgui_impl_opengl3_loader.h">
       <Filter>Dependencies\imgui</Filter>
     </ClInclude>
-    <ClInclude Include="imguiWindows.h">
+    <ClInclude Include="src\imguiWindows.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="animationController.h">
+    <ClInclude Include="src\animationController.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="transform.h">
+    <ClInclude Include="src\transform.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\renderPass.h">
+      <Filter>Header Files\Render Passes</Filter>
+    </ClInclude>
+    <ClInclude Include="src\pbrRenderer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\forwardRenderPass.h">
+      <Filter>Header Files\Render Passes</Filter>
+    </ClInclude>
+    <ClInclude Include="src\hdrRenderPass.h">
+      <Filter>Header Files\Render Passes</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

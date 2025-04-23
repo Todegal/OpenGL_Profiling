@@ -1,0 +1,7 @@
+0: flags
+1: frame_uniforms
+2: point_lights
+3: directional_lights
+4: joints
+5: object
+6: pbr_material

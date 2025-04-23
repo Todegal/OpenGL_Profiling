@@ -5,28 +5,17 @@
 #include "scene.h"
 #include "shaderProgram.h"
 #include "imguiWindows.h"
+#include "renderPass.h"
 
-struct Light
-{
-	glm::vec3 position; // Position will act as direction if the light is directional
-	glm::vec3 colour;
-	float strength;
-
-	enum LIGHT_TYPE {
-		DIRECTIONAL = 0, 
-		POINT
-	} type;
-};
-
-class PBRRenderer
+class PBRRenderer_old
 {
 public:
-	PBRRenderer(glm::ivec2 screenSize, std::shared_ptr<Camera> cameraPtr);
-	~PBRRenderer();
+	PBRRenderer_old(glm::ivec2 screenSize, std::shared_ptr<Camera> cameraPtr);
+	~PBRRenderer_old();
 
 	// No copy/move
-	PBRRenderer(const PBRRenderer&) = delete;
-	PBRRenderer& operator=(const PBRRenderer) = delete;
+	PBRRenderer_old(const PBRRenderer_old&) = delete;
+	PBRRenderer_old& operator=(const PBRRenderer_old) = delete;
 
 public:
 	void frame();
@@ -149,21 +138,8 @@ private:
 
 	// -----------------------
 
-public:
-	enum {
-		NORMALS_ENABLED = 0,
-		OCCLUSION_ENABLED,
-		SHADOWS_ENABLED,
-		ENVIRONMENT_MAP_ENABLED,
-		EMULATE_SUN_ENABLED,
-		DEPTH_PREPASS_ENABLED,
-		DEFERRED_PASS_ENABLED,
-		HDR_PASS_ENABLED,
-		NUM_FLAGS
-	};
-
 private:
-	std::array<bool, NUM_FLAGS> flags;
+	std::array<bool, RenderFlags::NUM_FLAGS> flags;
 
 public:
 	void setFlag(const int flag, bool value);

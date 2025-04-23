@@ -149,44 +149,30 @@
     <ClCompile Include="..\Dependencies\imgui-docking\imgui_tables.cpp" />
     <ClCompile Include="..\Dependencies\imgui-docking\imgui_widgets.cpp" />
     <ClCompile Include="..\Dependencies\imgui-docking\misc\cpp\imgui_stdlib.cpp" />
-    <ClCompile Include="animationController.cpp" />
-    <ClCompile Include="characterController.cpp" />
-    <ClCompile Include="imguiWindows.cpp" />
-    <ClCompile Include="inputHandler.cpp" />
-    <ClCompile Include="main.cpp" />
-    <ClCompile Include="model.cpp" />
-    <ClCompile Include="orbitCamera.cpp" />
-    <ClCompile Include="pbrRenderer.cpp" />
-    <ClCompile Include="pbrRenderer.h" />
-    <ClCompile Include="shaderProgram.cpp" />
-    <ClCompile Include="timer.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <Text Include="shaders\modelView.vert.glsl">
-      <FileType>Document</FileType>
-    </Text>
+    <ClCompile Include="src\animationController.cpp" />
+    <ClCompile Include="src\characterController.cpp" />
+    <ClCompile Include="src\forwardRenderPass.cpp" />
+    <ClCompile Include="src\hdrRenderPass.cpp" />
+    <ClCompile Include="src\imguiWindows.cpp" />
+    <ClCompile Include="src\inputHandler.cpp" />
+    <ClCompile Include="src\main.cpp" />
+    <ClCompile Include="src\model.cpp" />
+    <ClCompile Include="src\orbitCamera.cpp" />
+    <ClCompile Include="src\pbrRenderer.cpp" />
+    <ClCompile Include="src\pbrRenderer_old.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="src\pbrRenderer_old.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="src\renderPass.cpp" />
+    <ClCompile Include="src\shaderProgram.cpp" />
+    <ClCompile Include="src\timer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\Dependencies\imgui-docking\misc\debuggers\imgui.natstepfilter" />
-    <None Include="shaders\backgroundCube.vert.glsl" />
-    <None Include="shaders\buildCubemap.frag.glsl" />
-    <None Include="shaders\cubemapShader.geom.glsl" />
-    <None Include="shaders\hdr.frag.glsl" />
-    <None Include="shaders\instancedModelView.vert.glsl" />
-    <None Include="shaders\deferredShader.frag.glsl" />
-    <None Include="shaders\depthShader.frag.glsl" />
-    <None Include="shaders\depthShader.geom.glsl" />
-    <None Include="shaders\fragment_shared.glsl" />
-    <None Include="shaders\gBuffer.frag.glsl" />
-    <None Include="shaders\model.vert.glsl" />
-    <Text Include="shaders\pbr.frag.glsl">
-      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</DeploymentContent>
-      <FileType>Document</FileType>
-    </Text>
-    <None Include="shaders\pbr_functions.glsl" />
-    <None Include="shaders\screenQuad.vert.glsl" />
-    <None Include="shaders\unlit.frag.glsl" />
-    <None Include="shaders\vertex_shared.glsl" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Dependencies\imgui-docking\backends\imgui_impl_glfw.h" />
@@ -199,17 +185,21 @@
     <ClInclude Include="..\Dependencies\imgui-docking\imstb_textedit.h" />
     <ClInclude Include="..\Dependencies\imgui-docking\imstb_truetype.h" />
     <ClInclude Include="..\Dependencies\imgui-docking\misc\cpp\imgui_stdlib.h" />
-    <ClInclude Include="animationController.h" />
-    <ClInclude Include="camera.h" />
-    <ClInclude Include="characterController.h" />
-    <ClInclude Include="imguiWindows.h" />
-    <ClInclude Include="inputHandler.h" />
-    <ClInclude Include="model.h" />
-    <ClInclude Include="orbitCamera.h" />
-    <ClInclude Include="scene.h" />
-    <ClInclude Include="shaderProgram.h" />
-    <ClInclude Include="timer.h" />
-    <ClInclude Include="transform.h" />
+    <ClInclude Include="src\hdrRenderPass.h" />
+    <ClInclude Include="src\forwardRenderPass.h" />
+    <ClInclude Include="src\pbrRenderer.h" />
+    <ClInclude Include="src\renderPass.h" />
+    <ClInclude Include="src\animationController.h" />
+    <ClInclude Include="src\camera.h" />
+    <ClInclude Include="src\characterController.h" />
+    <ClInclude Include="src\imguiWindows.h" />
+    <ClInclude Include="src\inputHandler.h" />
+    <ClInclude Include="src\model.h" />
+    <ClInclude Include="src\orbitCamera.h" />
+    <ClInclude Include="src\scene.h" />
+    <ClInclude Include="src\shaderProgram.h" />
+    <ClInclude Include="src\timer.h" />
+    <ClInclude Include="src\transform.h" />
   </ItemGroup>
   <ItemGroup>
     <Natvis Include="..\Dependencies\imgui-docking\misc\debuggers\imgui.natvis" />
