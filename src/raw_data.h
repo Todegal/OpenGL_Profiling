@@ -1,0 +1,182 @@
+#pragma once
+
+#include <assimp/scene.h>
+
+#include <assimp/texture.h>
+#include <glm/vec2.hpp>
+#include <glm/vec3.hpp>
+
+#include <filesystem>
+#include <span>
+#include <vector>
+
+// So my thoughts are: load the assimp scene,
+// pass it with some index to various defined classes
+// move/take ownership of the data we need
+// (it seems like that can't be done)
+// release the data we don't
+// GENIUS
+
+class RawMesh
+{
+      public:
+        RawMesh(const aiMesh* mesh);
+        ~RawMesh() = default;
+
+        RawMesh(RawMesh&) = delete;
+        RawMesh& operator=(RawMesh&) = delete;
+
+        RawMesh(RawMesh&&) = delete;
+        RawMesh& operator=(RawMesh&&) = delete;
+
+        const std::vector<uint32_t>& getIndices() const
+        {
+                return indices;
+        }
+
+        const std::vector<glm::vec3>& getPositions() const
+        {
+                return positions;
+        }
+
+        const std::vector<glm::vec2>& getTexCoords() const
+        {
+                return texCoords;
+        }
+
+        const std::vector<glm::vec3>& getNormals() const
+        {
+                return normals;
+        }
+
+        const std::vector<glm::vec3>& getTangents() const
+        {
+                return tangents;
+        }
+
+        const std::vector<glm::vec3>& getBitangents() const
+        {
+                return bitangents;
+        }
+
+        uint32_t getMaterialIndex() const
+        {
+                return materialIndex;
+        }
+
+        const glm::vec3& getMin() const
+        {
+                return min;
+        }
+
+        const glm::vec3& getMax() const
+        {
+                return max;
+        }
+
+        const std::string& getName() const
+        {
+                return name;
+        }
+
+      private:
+        std::vector<uint32_t> indices;
+
+        std::vector<glm::vec3> positions;
+        std::vector<glm::vec2> texCoords;
+        std::vector<glm::vec3> normals;
+        std::vector<glm::vec3> tangents;
+        std::vector<glm::vec3> bitangents;
+
+        uint32_t materialIndex;
+
+        // Mesh Bounds
+        glm::vec3 max;
+        glm::vec3 min;
+
+        std::string name;
+};
+
+class RawTexture
+{
+      public:
+        RawTexture(const aiTexture* texture);
+        RawTexture(const std::filesystem::path& filepath, const std::filesystem::path& rootDir = "");
+        ~RawTexture() = default;
+
+        const std::span<const uint8_t> getData() const
+        {
+                return dataSpan;
+        }
+
+        uint32_t getWidth() const
+        {
+                return width;
+        }
+        uint32_t getHeight() const
+        {
+                return height;
+        }
+
+        glm::ivec2 getDimensions() const
+        {
+                return {width, height};
+        }
+
+        int getChannels() const
+        {
+                return channels;
+        }
+
+      private:
+        std::span<const uint8_t> dataSpan;
+        int channels;
+        uint32_t width;
+        uint32_t height;
+
+        std::shared_ptr<uint8_t[]> dataPointer;
+};
+
+// TODO -> add materials
+class RawMaterial
+{
+      public:
+        RawMaterial(const aiMaterial* material, aiTexture** textures, const std::filesystem::path& rootDir = "");
+        ~RawMaterial() = default;
+
+        const std::unique_ptr<RawTexture>& getAlbedoTexture() const
+        {
+                return albedoTexture;
+        }
+
+      private:
+        std::unique_ptr<RawTexture> albedoTexture;
+};
+
+// So this is the container class
+// which contains all the sub data
+// model data, texture data etc.
+// loads new model files in the "addFile" function
+// which encapsulates the lifetime of the assimp scene
+class RawScene
+{
+      public:
+        RawScene() = default;
+        ~RawScene() = default;
+
+        void addFile(const std::filesystem::path& filePath);
+
+        const std::vector<std::shared_ptr<RawMesh>>& getMeshes() const
+        {
+                return meshes;
+        }
+
+        const std::vector<std::shared_ptr<RawMaterial>>& getMaterials() const
+        {
+                return materials;
+        }
+
+      private:
+        std::vector<std::shared_ptr<RawMesh>> meshes;
+        std::vector<std::shared_ptr<RawMaterial>> materials;
+};

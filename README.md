@@ -1,8 +1,8 @@
-# OpenGL_Profiling
+# graphics_engine
 
-This project has nothing to do with profiling at all, it's just another little OpenGL thing. 
+Little PBR engine (used to be called OPENGL_PROFILING)
 
-![Sponza Scene](Screenshots/sponza_19_04_25.png)
+![Sponza Scene](screenshots/sponza_19_04_25.png)
 
 ## -- Features --
 - PBR rendering

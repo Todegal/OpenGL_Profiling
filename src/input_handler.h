@@ -1,0 +1,99 @@
+#pragma once
+
+#include <glm/glm.hpp>
+
+#include "window.h"
+
+#include <string>
+#include <unordered_map>
+#include <vector>
+
+struct GLFWwindow;
+
+class InputHandler
+{
+      public:
+        InputHandler(const Window& window);
+
+        void pollInputs();
+
+      private:
+        void pollAxes();
+        void pollActions();
+        void pollToggles();
+
+      private:
+        GLFWwindow* windowPtr;
+
+        struct ActionMapping
+        {
+                std::vector<int> keys;
+                std::vector<int> mouseButtons;
+                std::vector<int> gamepadButtons;
+
+                bool state = false;
+        };
+
+        struct AxisMapping
+        {
+                std::vector<int> keys;
+                std::vector<int> gamepadAxis;
+                std::string axis;
+
+                float scale = 1.0f;
+        };
+
+        struct ToggleMapping
+        {
+                std::vector<int> keys;
+                std::vector<int> mouseButtons;
+
+                bool previous = false; // 1 Frame buffer
+
+                bool state = false;
+        };
+
+        std::vector<AxisMapping> axesMappings;
+        std::unordered_map<std::string, float> axesValues;
+
+        std::unordered_map<std::string, ActionMapping> actions;
+
+        std::unordered_map<std::string, ToggleMapping> toggles;
+
+        glm::vec2 mousePos;
+        glm::vec2 oldMousePos;
+
+        float scroll;
+        void setScrollOffset(float s)
+        {
+                scroll = s;
+        }
+
+      public:
+        void defineAxis(const std::string& name, const std::vector<int>& keys = {},
+                        const std::vector<int>& gamepadAxis = {}, float scale = 1.0f);
+        float getAxis(const std::string& name);
+
+        void defineAction(const std::string& name, const std::vector<int>& keys = {},
+                          const std::vector<int>& mouseButtons = {}, const std::vector<int>& gamepadButtons = {});
+        bool getAction(const std::string& name);
+
+        void defineToggle(const std::string& name, const std::vector<int>& keys = {},
+                          const std::vector<int>& mouseButtons = {}, bool initialValue = false);
+        bool getToggle(const std::string& name);
+
+        glm::vec2 getMousePos() const
+        {
+                return mousePos;
+        };
+
+        glm::vec2 getMouseOffset() const
+        {
+                return mousePos - oldMousePos;
+        }
+
+        float getScrollOffset() const
+        {
+                return scroll;
+        }
+};
