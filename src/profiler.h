@@ -1,76 +1,69 @@
 #pragma once
 
-#include "timer.h"
-
 #include <chrono>
-#include <memory>
-#include <stack>
 #include <string>
-#include <tuple>
-#include <unordered_map>
 
-class Profiler
+namespace Profiler
 {
-      private:
-        using clock_t = std::chrono::high_resolution_clock;
-        using sample_t = std::tuple<std::string, std::chrono::time_point<clock_t>>;
 
-      public:
-        Profiler();
-        ~Profiler();
+using clock_t = std::chrono::steady_clock;
+using time_point_t = clock_t::time_point;
 
-        Profiler(const Profiler&) = delete;
-        Profiler& operator=(const Profiler&) = delete;
-
-        void beginRegion(const std::string& name);
-        void endRegion();
-
-        struct TimedRegion
-        {
-                std::string name;
-                std::chrono::time_point<clock_t> startTime;
-
-                std::chrono::nanoseconds lastSample; // time it took last time this region was profiled
-                std::chrono::nanoseconds totalDuration;
-
-                std::unordered_map<std::string, std::shared_ptr<TimedRegion>> children;
-
-                float getSampleMilliseconds() const
-                {
-                        return static_cast<float>(lastSample.count()) / 1e6f;
-                }
-
-                float getDurationMilliseconds() const
-                {
-                        return static_cast<float>(totalDuration.count()) / 1e6f;
-                }
-        };
-
-        const std::unordered_map<std::string, std::shared_ptr<TimedRegion>>& getTopRegions() const
-        {
-                return topRegions;
-        };
-
-      private:
-        const Timer<clock_t> timer;
-        std::stack<std::shared_ptr<TimedRegion>> regionCallStack;
-
-        std::unordered_map<std::string, std::shared_ptr<TimedRegion>> topRegions;
+struct RegionInfo
+{
+        std::string name;
+        std::string file;
+        int line;
 };
 
-extern Profiler& getProfiler();
+struct ProfileEvent
+{
+        uint32_t id;
+        clock_t::time_point startTime;
+        clock_t::time_point endTime;
+        int depth; // Callstack depth
+};
+
+uint32_t RegisterRegion(const char* name, const char* file, int line);
+
+void BeginRegion(uint32_t id) noexcept;
+void EndRegion() noexcept;
+
+void EndFrame();
+
+const std::vector<ProfileEvent>& GetCurrentFrameEvents();
+const std::vector<ProfileEvent>& GetLastFrameEvents();
+const RegionInfo& GetRegionInfo(uint32_t id);
+
+struct ProfilerStats
+{
+        size_t totalEvents = 0;
+        size_t maxDepth = 0;
+        std::chrono::nanoseconds totalTime{0};
+};
+
+ProfilerStats GetFrameStats();
+
+}; // namespace Profiler
 
 class ScopedProfile
 {
       public:
-        ScopedProfile(const char* name)
+        ScopedProfile(const uint32_t id) noexcept
         {
-                getProfiler().beginRegion(name);
+                Profiler::BeginRegion(id);
         }
-        ~ScopedProfile()
+
+        ~ScopedProfile() noexcept
         {
-                getProfiler().endRegion();
+                Profiler::EndRegion();
         }
+
+        ScopedProfile(const ScopedProfile&) = delete;
+        ScopedProfile& operator=(const ScopedProfile&) = delete;
+
+        ScopedProfile(ScopedProfile&&) = delete;
+        ScopedProfile& operator=(ScopedProfile&&) = delete;
 };
 
 #if defined(__clang__) || defined(__GNUC__)
@@ -83,8 +76,14 @@ class ScopedProfile
 
 #ifndef NDEBUG
 
-#define PROFILE_FUNCTION() ScopedProfile __scopedProfile(FUNC_NAME)
-#define PROFILE_SCOPE(name) ScopedProfile __scopedProfile(name)
+#define COMBINE1(X, Y) X##Y // helper macro
+#define COMBINE(X, Y) COMBINE1(X, Y)
+
+#define PROFILE_SCOPE(name)                                                                                            \
+        static const uint32_t COMBINE(__profilerID, __LINE__) = Profiler::RegisterRegion(name, __FILE__, __LINE__);    \
+        ScopedProfile COMBINE(__scopedProfile, __LINE__)(COMBINE(__profilerID, __LINE__));
+
+#define PROFILE_FUNCTION() PROFILE_SCOPE(FUNC_NAME)
 
 #else
 

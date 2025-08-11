@@ -7,8 +7,10 @@
 #include "profiler.h"
 #include "timer.h"
 
-EngineImGuiContext::EngineImGuiContext(const Window& window, Timer<>& timer)
+EngineImGuiContext::EngineImGuiContext(const Window& window, Timer<>& timer) : profiler()
 {
+        PROFILE_FUNCTION();
+
         // Setup Dear ImGui context
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
@@ -43,6 +45,7 @@ void EngineImGuiContext::draw()
 
         drawMenuBar();
         if (showMetrics) { drawMetrics(); }
+        if (showProfiler) { profiler.render(); }
 
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
@@ -74,6 +77,7 @@ void EngineImGuiContext::drawMenuBar()
                 if (ImGui::BeginMenu("Info"))
                 {
                         ImGui::MenuItem("Frame Metrics", "", &showMetrics);
+                        ImGui::MenuItem("Profiler", "", &showProfiler);
 
                         ImGui::EndMenu();
                 }

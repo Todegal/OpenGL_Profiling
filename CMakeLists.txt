@@ -20,6 +20,7 @@ list(APPEND source
 	src/window.cpp
 	src/opengl_context.cpp
 	src/profiler.cpp
+	src/imgui_profile_visualiser.cpp
 )
 
 list(APPEND include
@@ -43,6 +44,7 @@ list(APPEND include
 	src/window.h
 	src/opengl_context.h
 	src/profiler.h
+	src/imgui_profile_visualiser.h
 )
 
 add_executable(graphics_engine ${source} ${include})

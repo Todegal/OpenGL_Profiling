@@ -7,6 +7,8 @@
 
 GLFWContext::GLFWContext()
 {
+        PROFILE_FUNCTION();
+
         glfwSetErrorCallback(
             [](int error, const char* description) { spdlog::error("GLFW Error {}: {}", error, description); });
 
@@ -31,6 +33,8 @@ void GLFWContext::pollEvents()
 
 Window::Window(const GLFWContext&, int startWidth, int startHeight, std::string title, const WindowFlags& flags)
 {
+        PROFILE_FUNCTION()
+
         glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
         glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
 
@@ -64,6 +68,8 @@ void Window::swapBuffers()
 
 glm::ivec2 Window::getFramebufferSize() const
 {
+        PROFILE_FUNCTION();
+
         int x, y;
         glfwGetFramebufferSize(windowPtr.get(), &x, &y);
 

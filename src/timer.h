@@ -7,7 +7,7 @@
 
 // Independent timer, will start from acquisition
 // Clock must be std::chrono::clock
-template <typename Clock = std::chrono::high_resolution_clock>
+template <typename Clock = std::chrono::steady_clock>
 class Timer
 {
         static_assert(std::chrono::is_clock<Clock>::value, "Clock must be a valid std::chrono clock!");

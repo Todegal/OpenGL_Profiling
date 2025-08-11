@@ -3,6 +3,8 @@
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>
 
+#include "profiler.h"
+
 static const auto openglLogger = spdlog::stdout_color_mt("OpenGL");
 
 // trace every gl call, and print errors when appropriate
@@ -23,7 +25,7 @@ void openglTraceAfter(const glbinding::FunctionCall& call)
         const std::string functionCall = oss.str();
 
         const auto error = gl::glGetError();
-        if (error == gl::GLenum::GL_NO_ERROR) { openglLogger->trace(functionCall); }
+        if (error == gl::GLenum::GL_NO_ERROR) { }
         else
         {
                 openglLogger->error(glbinding::aux::Meta::getString(error));
@@ -50,6 +52,8 @@ void GLAPIENTRY openglErrorCallback(gl::GLenum, gl::GLenum, gl::GLuint, gl::GLen
 
 GLContext::GLContext(const Window& window) : windowRef(window)
 {
+        PROFILE_FUNCTION();
+
         glfwMakeContextCurrent(window.getWindowPtr().get());
 
         glbinding::initialize(glfwGetProcAddress);

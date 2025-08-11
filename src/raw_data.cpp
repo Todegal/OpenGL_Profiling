@@ -13,12 +13,14 @@
 #include <glm/glm.hpp>
 #include <spdlog/spdlog.h>
 
-#include <algorithm>
-#include <exception>
+#include "profiler.h"
+
 #include <filesystem>
 
 void RawScene::addFile(const std::filesystem::path& filePath)
 {
+        PROFILE_FUNCTION();
+
         std::filesystem::path parentDir = std::filesystem::absolute(filePath).parent_path();
 
         Assimp::Importer importer;
@@ -56,6 +58,8 @@ void RawScene::addFile(const std::filesystem::path& filePath)
 // I guess just copy all the data over...
 RawMesh::RawMesh(const aiMesh* mesh)
 {
+        PROFILE_FUNCTION();
+
         // indices
         indices.resize(mesh->mNumFaces * 3);
         for (size_t i = 0; i < mesh->mNumFaces; i++)
@@ -114,6 +118,8 @@ RawMesh::RawMesh(const aiMesh* mesh)
 
 RawTexture::RawTexture(const aiTexture* texture)
 {
+        PROFILE_FUNCTION();
+
         const char* filename = texture->mFilename.C_Str();
         if (texture->mHeight == 0)
         {
@@ -151,6 +157,8 @@ RawTexture::RawTexture(const aiTexture* texture)
 RawTexture::RawTexture(const std::filesystem::path& filepath, const std::filesystem::path& rootDir)
     : channels(0), width(0), height(0)
 {
+        PROFILE_FUNCTION();
+
         const std::filesystem::path absoluteFilePath =
             (rootDir != "") ? std::filesystem::absolute(rootDir / filepath) : std::filesystem::absolute(filepath);
 
@@ -176,6 +184,8 @@ RawTexture::RawTexture(const std::filesystem::path& filepath, const std::filesys
 
 RawMaterial::RawMaterial(const aiMaterial* material, aiTexture** textures, const std::filesystem::path& rootDir)
 {
+        PROFILE_FUNCTION();
+
         aiString albedoTexturePath;
         material->GetTexture(aiTextureType_BASE_COLOR, 0, &albedoTexturePath);
 
