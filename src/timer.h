@@ -1,63 +1,159 @@
 #pragma once
 
 #include <chrono>
+#include <functional>
+#include <ratio>
+#include <vector>
 
-template<typename F>
-std::chrono::high_resolution_clock::duration fixedTimeStepLags;
-
-// Massively over-engineered timing class
+// Independent timer, will start from acquisition
+// Clock must be std::chrono::clock
+template <typename Clock = std::chrono::high_resolution_clock>
 class Timer
 {
-public:
-	using f_seconds = std::chrono::duration<float>;
-	using f_mlliseconds = std::chrono::duration<float, std::milli>;
+        static_assert(std::chrono::is_clock<Clock>::value, "Clock must be a valid std::chrono clock!");
 
-	Timer()
-		: deltaTime(hrClock::duration::zero())
-	{ }
+      public:
+        Timer() : startTime(Clock::now())
+        {
+                elapsedLastUpdate = std::chrono::nanoseconds::zero();
+                deltaTime = std::chrono::nanoseconds::zero();
 
-private:
-	using hrClock = std::chrono::high_resolution_clock;
+                isPaused = false;
+                pausedTotal = std::chrono::nanoseconds::zero();
+                pausedStart = startTime;
+        }
 
-	hrClock::time_point startTime;
-	hrClock::time_point currentTime;
-	hrClock::time_point lastTime;
+        ~Timer() = default;
 
-	hrClock::duration deltaTime;
+        // Returns absolute time point
+        static const std::chrono::time_point<Clock> getNow()
+        {
+                return Clock::now();
+        }
 
-public:
-	void start();
+        // Returns duration since timer's construction, minus any time where the timer has been paused
+        template <typename _Dur>
+        const _Dur getElapsedTime() const
+        {
+                const auto now = isPaused ? pausedStart : Clock::now();
+                return std::chrono::duration_cast<_Dur>(now - (startTime + pausedTotal));
+        }
 
-	void tick();
+        float getElapsedTimeSeconds() const
+        {
+                return getElapsedTime<std::chrono::duration<float, std::ratio<1>>>().count();
+        }
 
-public:
-	template<typename T>
-	inline T getDeltaTime()
-	{
-		return std::chrono::duration_cast<T>(deltaTime);
-	}
+        void update()
+        {
+                if (isPaused) return;
 
-	template<typename T>
-	inline T getTimeElapsed()
-	{
-		return std::chrono::duration_cast<T>(currentTime - startTime);
-	}
+                const auto elapsed = getElapsedTime<std::chrono::nanoseconds>();
+                deltaTime = std::chrono::duration_cast<std::chrono::nanoseconds>(elapsed - elapsedLastUpdate);
 
-	// Run F function every _Ratio duration ratio with the arguments
-	template<typename _Ratio, typename F, typename... Args>
-	void fixedTimeStep(F function, const Args&... args);
+                for (FixedIntervalFunction& f : fixedIntervalFunctions)
+                {
+                        if ((elapsed - f.lastCall) >= f.interval)
+                        {
+                                f.function();
+                                f.lastCall += f.interval;
+                        }
+                }
+
+                for (VariableIntervalFunction& f : variableIntervalFunctions)
+                {
+                        if (elapsed >= f.nextCall) { f.nextCall = f.function(); }
+                }
+
+                elapsedLastUpdate = elapsed;
+        }
+
+        void pause()
+        {
+                if (!isPaused)
+                {
+                        pausedStart = Clock::now();
+                        isPaused = true;
+                }
+        }
+
+        void resume()
+        {
+                if (isPaused)
+                {
+                        pausedTotal += Clock::now() - pausedStart;
+                        isPaused = false;
+                }
+        }
+
+        const std::chrono::time_point<Clock> getLastUpdate() const
+        {
+                return elapsedLastUpdate;
+        }
+
+        float getDeltaTimeSeconds() const
+        {
+                return getDeltaTime<std::chrono::duration<float, std::ratio<1>>>().count();
+        }
+
+        float getDeltaTimeMilliseconds() const
+        {
+                return getDeltaTime<std::chrono::duration<float, std::milli>>().count();
+        }
+
+        template <typename _Dur>
+        const _Dur getDeltaTime() const
+        {
+                return std::chrono::duration_cast<_Dur>(deltaTime);
+        }
+
+        template <typename _Dur>
+        void addFixedIntervalFunction(const std::function<void(void)>& function, const _Dur& interval = _Dur(1))
+        {
+                auto nsInterval = std::chrono::duration_cast<std::chrono::nanoseconds>(interval);
+
+                FixedIntervalFunction fixedIntervalFunction{};
+                fixedIntervalFunction.function = function;
+                fixedIntervalFunction.interval = nsInterval;
+                fixedIntervalFunction.lastCall = getElapsedTime<std::chrono::nanoseconds>();
+
+                fixedIntervalFunctions.push_back(fixedIntervalFunction);
+        }
+
+        void addVariableIntervalFunction(std::function<std::chrono::nanoseconds(void)> function,
+                                         std::chrono::nanoseconds firstCall)
+        {
+                VariableIntervalFunction variableIntervalFunction{};
+                variableIntervalFunction.function = function;
+                variableIntervalFunction.nextCall = firstCall;
+
+                variableIntervalFunctions.push_back(variableIntervalFunction);
+        }
+
+      private:
+        const std::chrono::time_point<Clock> startTime;
+
+        std::chrono::nanoseconds elapsedLastUpdate;
+        std::chrono::nanoseconds deltaTime;
+
+        struct FixedIntervalFunction
+        {
+                std::function<void()> function;
+                std::chrono::nanoseconds interval;
+                std::chrono::nanoseconds lastCall;
+        };
+
+        std::vector<FixedIntervalFunction> fixedIntervalFunctions;
+
+        struct VariableIntervalFunction
+        {
+                std::function<std::chrono::nanoseconds(void)> function;
+                std::chrono::nanoseconds nextCall;
+        };
+
+        std::vector<VariableIntervalFunction> variableIntervalFunctions;
+
+        bool isPaused;
+        std::chrono::time_point<Clock> pausedStart;
+        std::chrono::nanoseconds pausedTotal;
 };
-
-template<typename _Ratio, typename F, typename ...Args >
-inline void Timer::fixedTimeStep(F function, const Args&... args)
-{
-	fixedTimeStepLags<F> += deltaTime;
-
-	constexpr hrClock::duration fixedDuration = std::chrono::duration_cast<hrClock::duration>(std::chrono::duration<int, _Ratio>(1));
-
-	while (fixedTimeStepLags<F> >= fixedDuration)
-	{
-		function(args...);
-		fixedTimeStepLags<F> -= fixedDuration;
-	}
-}

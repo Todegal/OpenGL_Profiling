@@ -1,4 +1,5 @@
 #include "opengl_context.h"
+#include <chrono>
 #include <glbinding/gl/bitfield.h>
 #define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
@@ -19,84 +20,81 @@
 #include "input_handler.h"
 #include "orbit_camera.h"
 // #include "pbr_renderer.h"
-#include "imgui_windows.h"
+#include "imgui_context.h"
 #include "raw_data.h"
 // #include "shader_program.h"
+#include "profiler.h"
 #include "timer.h"
 #include "window.h"
 
-#include <algorithm>
-#include <execution>
-#include <format>
-#include <memory>
+#include <iostream>
+
+void print_region_recursive(const std::shared_ptr<Profiler::TimedRegion> region, int depth = 0)
+{
+        for (int i = 0; i < depth; ++i)
+        {
+                std::cout << "\t";
+        }
+        std::cout << region->name << ": " << region->getSampleMilliseconds()
+                  << "ms, total: " << region->getDurationMilliseconds() / 1000.0f << "s\n";
+
+        for (const auto& child : region->children)
+        {
+                print_region_recursive(std::get<1>(child), depth + 1);
+        }
+}
+
+void print_regions(const Profiler& profiler)
+{
+        const auto regions = profiler.getTopRegions();
+        for (const auto& region : regions)
+        {
+                print_region_recursive(std::get<1>(region));
+        }
+}
 
 int main()
 {
-        Timer t;
-        t.start();
+        Timer timer;
 
 #ifndef NDEBUG
         spdlog::set_level(spdlog::level::info);
 #endif
-
         spdlog::set_pattern("[%n] [%^%l%$] %v"); // logger name, colored level, message
         spdlog::set_default_logger(spdlog::stdout_color_mt("graphics_engine"));
 
         GLFWContext glfwContext;
 
-	WindowFlags flags;
-	flags.startMaximized = true;
-	flags.resizable = true;
+        WindowFlags flags;
+        flags.startMaximized = true;
+        flags.resizable = true;
 
-	Window window(glfwContext, 800, 600, "-- graphics_engine --", flags);
+        Window window(glfwContext, 800, 600, "-- graphics_engine --", flags);
 
-	GLContext glContext(window);
+        GLContext glContext(window);
 
-        // Setup Dear ImGui context
-        IMGUI_CHECKVERSION();
-        ImGui::CreateContext();
-        ImGuiIO& io = ImGui::GetIO();
-        io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard; // Enable Keyboard Controls
-        io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;  // Enable Gamepad Controls
-        io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;     // IF using Docking Branch
-
-        // Setup Platform/Renderer backends
-        ImGui_ImplGlfw_InitForOpenGL(
-            window.getWindowPtr().get(), true); // Second param install_callback=true will install GLFW callbacks and chain to existing ones.
-        ImGui_ImplOpenGL3_Init();
-
-        imgui_data imguiData;
+        EngineImGuiContext imguiContext(window, timer);
 
         InputHandler input(window);
 
         while (!window.shouldClose())
         {
-                t.tick();
+                PROFILE_SCOPE("frame");
 
-		glfwContext.pollEvents();
+                timer.update();
 
-		gl::glClear(gl::ClearBufferMask::GL_COLOR_BUFFER_BIT);
+                glfwContext.pollEvents();
 
-                // Start the Dear ImGui frame
-                ImGui_ImplOpenGL3_NewFrame();
-                ImGui_ImplGlfw_NewFrame();
-                ImGui::NewFrame();
+                gl::glClear(gl::ClearBufferMask::GL_COLOR_BUFFER_BIT);
 
-                drawMenuBar(imguiData);
-                if (imguiData.showMetrics) { metrics(t, imguiData); }
+                imguiContext.draw();
 
                 if (!ImGui::GetIO().WantCaptureKeyboard && !ImGui::GetIO().WantCaptureMouse) input.pollInputs();
 
-
-                ImGui::Render();
-                ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-
-		window.swapBuffers();
+                window.swapBuffers();
         }
 
-        ImGui_ImplOpenGL3_Shutdown();
-        ImGui_ImplGlfw_Shutdown();
-        ImGui::DestroyContext();
+        print_regions(getProfiler());
 
         return EXIT_SUCCESS;
 }

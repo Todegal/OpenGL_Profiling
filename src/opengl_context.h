@@ -35,6 +35,9 @@ class GLContext
         GLContext(const GLContext&) = delete;
         GLContext& operator=(const GLContext&) = delete;
 
+        GLContext(const GLContext&&) = delete;
+        GLContext& operator=(const GLContext&&) = delete;
+
         void enable(gl::GLenum cap)
         {
                 if (state[cap] == false) { glEnable(cap); }
@@ -64,13 +67,13 @@ class GLBuffer
         GLBuffer() = delete;
         GLBuffer(const GLContext&) : allocatedSize(0)
         {
-		gl::glCreateBuffers(1, &bufferID);
+                gl::glCreateBuffers(1, &bufferID);
                 spdlog::trace("Created Buffer: {}", bufferID);
         }
 
         ~GLBuffer()
         {
-		gl::glDeleteBuffers(1, &bufferID);
+                gl::glDeleteBuffers(1, &bufferID);
                 spdlog::trace("Destroyed Buffer: {}", bufferID);
         }
 
@@ -87,7 +90,7 @@ class GLBuffer
         template <gl::GLenum target>
         void bind()
         {
-                static_assert(isBufferTargetValid(target), "Must be a valid target!");
+                static_assert(isTargetValid(target), "Must be a valid target!");
 
                 glBindBuffer(target, bufferID);
         }
@@ -131,11 +134,12 @@ class GLBuffer
                             "Cannot sub data into an undersized buffer! Use 'bufferData' instead!");
                 }
 
-                glNamedBufferSubData(bufferID, offset, static_cast<gl::GLsizeiptr>(data.size() * sizeof(T)), data.data());
+                glNamedBufferSubData(bufferID, offset, static_cast<gl::GLsizeiptr>(data.size() * sizeof(T)),
+                                     data.data());
         }
 
       private:
-        static constexpr bool isBufferTargetValid(gl::GLenum target)
+        static constexpr bool isTargetValid(gl::GLenum target)
         {
                 return target == gl::GL_ARRAY_BUFFER || target == gl::GL_ATOMIC_COUNTER_BUFFER ||
                        target == gl::GL_COPY_READ_BUFFER || target == gl::GL_COPY_WRITE_BUFFER ||
@@ -148,7 +152,7 @@ class GLBuffer
 
       private:
         size_t allocatedSize;
-	gl::GLuint bufferID;
+        gl::GLuint bufferID;
 };
 
 class GLVertexArray
@@ -157,13 +161,13 @@ class GLVertexArray
         GLVertexArray() = delete;
         GLVertexArray(const GLContext&)
         {
-		gl::glGenVertexArrays(1, &vaoID);
+                gl::glGenVertexArrays(1, &vaoID);
                 spdlog::trace("Created VAO: {}", vaoID);
         }
 
         ~GLVertexArray()
         {
-		gl::glDeleteVertexArrays(1, &vaoID);
+                gl::glDeleteVertexArrays(1, &vaoID);
                 spdlog::trace("Destroyed VAO: {}", vaoID);
         }
 
@@ -175,9 +179,9 @@ class GLVertexArray
 
         void bind()
         {
-		gl::glBindVertexArray(vaoID);
+                gl::glBindVertexArray(vaoID);
         }
 
       private:
-	gl::GLuint vaoID;
+        gl::GLuint vaoID;
 };

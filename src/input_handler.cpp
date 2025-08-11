@@ -4,6 +4,8 @@
 
 #include <spdlog/spdlog.h>
 
+#include "profiler.h"
+
 #include <algorithm>
 
 InputHandler::InputHandler(const Window& window) : windowPtr(window.getWindowPtr().get()), scroll(0.0f)
@@ -14,6 +16,8 @@ InputHandler::InputHandler(const Window& window) : windowPtr(window.getWindowPtr
 
 void InputHandler::pollInputs()
 {
+        PROFILE_FUNCTION();
+
         double x, y;
         glfwGetCursorPos(windowPtr, &x, &y);
 
@@ -30,6 +34,8 @@ void InputHandler::pollInputs()
 
 void InputHandler::pollAxes()
 {
+        PROFILE_FUNCTION();
+
         for (auto& [_, value] : axesValues)
         {
                 value = 0.0f;
@@ -61,6 +67,8 @@ void InputHandler::pollAxes()
 
 void InputHandler::pollActions()
 {
+        PROFILE_FUNCTION();
+
         for (auto& [name, map] : actions)
         {
                 bool value = false;
@@ -92,6 +100,8 @@ void InputHandler::pollActions()
 
 void InputHandler::pollToggles()
 {
+        PROFILE_FUNCTION();
+
         for (auto& [name, map] : toggles)
         {
                 bool mod = false;

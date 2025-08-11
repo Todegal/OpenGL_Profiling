@@ -3,7 +3,6 @@ cmake_minimum_required(VERSION 3.21)
 project(graphics_engine LANGUAGES C CXX)
 
 list(APPEND source
-	src/timer.cpp
 	src/shader_program.cpp
 	# src/render_pass.cpp
 	src/raw_data.cpp
@@ -13,13 +12,14 @@ list(APPEND source
 	# src/model.cpp
 	src/main.cpp
 	src/input_handler.cpp
-	src/imgui_windows.cpp
+	src/imgui_context.cpp
 	# src/hdr_render_pass.cpp
 	# src/forward_render_pass.cpp
 	# src/character_controller.cpp
 	# src/animation_controller.cpp
 	src/window.cpp
 	src/opengl_context.cpp
+	src/profiler.cpp
 )
 
 list(APPEND include
@@ -34,7 +34,7 @@ list(APPEND include
 	src/orbit_camera.h
 	# src/model.h
 	src/input_handler.h
-	src/imgui_windows.h
+	src/imgui_context.h
 	src/hdr_render_pass.h
 	src/forward_render_pass.h
 	src/character_controller.h
@@ -42,6 +42,7 @@ list(APPEND include
 	src/animation_controller.h
 	src/window.h
 	src/opengl_context.h
+	src/profiler.h
 )
 
 add_executable(graphics_engine ${source} ${include})

@@ -3,6 +3,8 @@
 #include <GLFW/glfw3.h>
 #include <spdlog/spdlog.h>
 
+#include "profiler.h"
+
 GLFWContext::GLFWContext()
 {
         glfwSetErrorCallback(
@@ -23,12 +25,12 @@ GLFWContext::~GLFWContext()
 
 void GLFWContext::pollEvents()
 {
+        PROFILE_FUNCTION();
         glfwPollEvents();
 }
 
 Window::Window(const GLFWContext&, int startWidth, int startHeight, std::string title, const WindowFlags& flags)
 {
-
         glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
         glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
 
@@ -55,6 +57,8 @@ Window::~Window()
 
 void Window::swapBuffers()
 {
+        PROFILE_FUNCTION();
+
         glfwSwapBuffers(windowPtr.get());
 }
 
