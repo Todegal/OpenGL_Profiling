@@ -1,0 +1,61 @@
+﻿API Call Summary
+Call Type, Call Count
+Draws:,1599
+Multi Draws:,0
+Sub Draws:,0
+Dispatches:,0
+Clears:,2
+Blits:,1
+Swap Buffers:,1
+Misc. Data Update:,0
+Non-API:,1
+Other:,9737
+Total:,11341
+
+
+
+
+API Call Details
+API Call,Count,Avg CPU ms,Σ CPU ms,Avg GPU ms,Σ GPU ms
+glBufferSubData(),1603,0.05,86.96,0.00,0.00
+glBindVertexArray(),3192,<0.01,3.39,0.00,0.00
+glBindBuffer(),3213,<0.01,1.50,0.00,0.00
+SwapBuffers(),1,1.14,1.14,0.00,0.00
+glGetBufferParameteriv(),1603,<0.01,0.45,0.00,0.00
+glBlitNamedFramebuffer(),1,0.06,0.06,0.00,0.00
+glBufferData(),4,0.01,0.05,0.00,0.00
+glBindFramebuffer(),2,0.02,0.04,0.00,0.00
+glUseProgram(),5,<0.01,0.02,0.00,0.00
+glGetIntegerv(),16,<0.01,0.01,0.00,0.00
+glBindTexture(),6,<0.01,<0.01,0.00,0.00
+glGetProgramResourceIndex(),8,<0.01,<0.01,0.00,0.00
+glEnable(),5,<0.01,<0.01,0.00,0.00
+glGenVertexArrays(),1,<0.01,<0.01,0.00,0.00
+glDisable(),9,<0.01,<0.01,0.00,0.00
+glScissor(),5,<0.01,<0.01,0.00,0.00
+glBindBufferBase(),12,<0.01,<0.01,0.00,0.00
+glViewport(),4,<0.01,<0.01,0.00,0.00
+glUniform1i(),2,<0.01,<0.01,0.00,0.00
+glGetUniformBlockIndex(),4,<0.01,<0.01,0.00,0.00
+glShaderStorageBlockBinding(),8,<0.01,<0.01,0.00,0.00
+glIsEnabled(),6,<0.01,<0.01,0.00,0.00
+glVertexAttribPointer(),3,<0.01,<0.01,0.00,0.00
+glBindSampler(),2,<0.01,<0.01,0.00,0.00
+glActiveTexture(),3,<0.01,<0.01,0.00,0.00
+glUniformBlockBinding(),4,<0.01,<0.01,0.00,0.00
+glPolygonMode(),2,<0.01,<0.01,0.00,0.00
+glGetUniformLocation(),2,<0.01,<0.01,0.00,0.00
+glBlendFuncSeparate(),2,<0.01,<0.01,0.00,0.00
+glUniform2fv(),1,<0.01,<0.01,0.00,0.00
+glUniformMatrix4fv(),1,<0.01,<0.01,0.00,0.00
+glBlendFunc(),1,<0.01,<0.01,0.00,0.00
+glEnableVertexAttribArray(),3,<0.01,<0.01,0.00,0.00
+glIsProgram(),1,<0.01,<0.01,0.00,0.00
+glBlendEquation(),1,<0.01,<0.01,0.00,0.00
+glBlendEquationSeparate(),1,<0.01,<0.01,0.00,0.00
+glCheckFramebufferStatus(),1,<0.01,<0.01,0.00,0.00
+glDeleteVertexArrays(),1,<0.01,<0.01,0.00,0.00
+glDrawElements(),1594,0.00,0.00,0.02,34.08
+glClear(),2,0.00,0.00,<0.01,0.02
+glDrawElementsBaseVertex(),4,0.00,0.00,<0.01,0.01
+glDrawElementsInstanced(),1,0.00,0.00,<0.01,<0.01

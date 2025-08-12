@@ -128,16 +128,19 @@ void RenderPass::loadJoints(const std::shared_ptr<RenderableModel>& model)
 
 void RenderPass::renderPrimitive(const std::shared_ptr<MeshPrimitive>& prim)
 {
-	struct alignas(16) ObjectUniforms
+	struct alignas(16) InstanceTransform
 	{
 		glm::mat4 model;
 		glm::mat3x4 normalMatrix;
-	} objectUniforms;
+	} instance;
 
-	objectUniforms.model = prim->transform->getWorldTransform();
-	objectUniforms.normalMatrix = glm::transpose(glm::inverse(glm::mat3(objectUniforms.model)));
+	instance.model = prim->transform->getWorldTransform();
+	glm::mat3 NM = prim->transform->getWorldTransform();
+	NM = glm::inverse(NM);
+	NM = glm::transpose(NM);
+	instance.normalMatrix = NM;
 
-	renderContext.buffers.bufferData("object", sizeof(ObjectUniforms), &objectUniforms);
+	renderContext.buffers.bufferData("instance", sizeof(InstanceTransform), &instance);
 
 	glBindVertexArray(prim->vertexArray);
 
@@ -148,9 +151,67 @@ void RenderPass::renderPrimitive(const std::shared_ptr<MeshPrimitive>& prim)
 	glBindVertexArray(0);
 }
 
-void RenderPass::parseMaterialProperties(const std::vector<GLuint>& textures, const tinygltf::Material& materialDesc)
+void RenderPass::parseMaterialProperties(const std::vector<GLuint>& textureIDs, const tinygltf::Material& materialDesc, ShaderProgram& shaderProgram)
 {
+	const tinygltf::PbrMetallicRoughness& pbr = materialDesc.pbrMetallicRoughness;
 
+	shaderProgram.setVec4("uBaseColour.factor", { pbr.baseColorFactor[0], pbr.baseColorFactor[1], pbr.baseColorFactor[2], pbr.baseColorFactor[3] });
+	if (pbr.baseColorTexture.index >= 0)
+	{
+		shaderProgram.setBool("uBaseColour.isTextureEnabled", true);
+
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, textureIDs[pbr.baseColorTexture.index]);
+		shaderProgram.setInt("uBaseColour.textureMap", 0);
+	}
+	else
+	{
+		shaderProgram.setBool("uBaseColour.isTextureEnabled", false);
+	}
+
+	shaderProgram.setVec4("uMetallicRoughness.factor", { 0, pbr.roughnessFactor, pbr.metallicFactor, 0 });
+	if (pbr.metallicRoughnessTexture.index >= 0)
+	{
+		shaderProgram.setBool("uMetallicRoughness.isTextureEnabled", true);
+
+		glActiveTexture(GL_TEXTURE1);
+		glBindTexture(GL_TEXTURE_2D, textureIDs[pbr.metallicRoughnessTexture.index]);
+		shaderProgram.setInt("uMetallicRoughness.textureMap", 1);
+	}
+	else
+	{
+		shaderProgram.setBool("uMetallicRoughness.isTextureEnabled", false);
+	}
+
+	if (materialDesc.normalTexture.index >= 0 && renderContext.flags[NORMALS_ENABLED])
+	{
+		shaderProgram.setBool("uNormalMap.isTextureEnabled", true);
+
+		glActiveTexture(GL_TEXTURE2);
+		glBindTexture(GL_TEXTURE_2D, textureIDs[materialDesc.normalTexture.index]);
+		shaderProgram.setInt("uNormalMap.textureMap", 2);
+
+		shaderProgram.setVec4("uNormalMap.factor", { materialDesc.normalTexture.scale, 0, 0, 0 });
+	}
+	else
+	{
+		shaderProgram.setBool("uNormalMap.isTextureEnabled", false);
+	}
+
+	if (materialDesc.occlusionTexture.index >= 0 && renderContext.flags[OCCLUSION_ENABLED])
+	{
+		shaderProgram.setBool("uOcclusion.isTextureEnabled", true);
+
+		glActiveTexture(GL_TEXTURE3);
+		glBindTexture(GL_TEXTURE_2D, textureIDs[materialDesc.occlusionTexture.index]);
+		shaderProgram.setInt("uOcclusion.textureMap", 3);
+
+		shaderProgram.setVec4("uOcclusion.factor", { materialDesc.occlusionTexture.strength, 0, 0, 0 });
+	}
+	else
+	{
+		shaderProgram.setBool("uOcclusion.isTextureEnabled", false);
+	}
 }
 
 

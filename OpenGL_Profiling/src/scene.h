@@ -7,23 +7,26 @@
 
 #include <glm/vec3.hpp>
 
-struct Light
+struct PointLight
 {
 	glm::vec3 position; // Position will act as direction if the light is directional
 	glm::vec3 colour;
 	float strength;
+};
 
-	enum LIGHT_TYPE {
-		DIRECTIONAL = 0,
-		POINT
-	} type;
+struct DirectionalLight
+{
+	glm::vec3 direction; // Position will act as direction if the light is directional
+	glm::vec3 colour;
+	float strength;
 };
 
 struct Scene
 {
-	std::vector<Light> sceneLights;
+	std::vector<PointLight> scenePointLights;
+	std::vector<DirectionalLight> sceneDirectionalLights;
 	std::vector<std::shared_ptr<RenderableModel>> sceneModels;
 	std::string environmentMap = "";
 
-	Scene() : sceneLights(), sceneModels(), environmentMap("") { }
+	Scene() : scenePointLights(), sceneDirectionalLights(), sceneModels(), environmentMap("") { }
 };

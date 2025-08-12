@@ -16,6 +16,11 @@ vec3 ACESFilm(vec3 x)
     return clamp((x * (a * x + b)) / (x * (c * x + d) + e), 0.0, 1.0);
 }
 
+vec3 Reinhard(vec3 x)
+{
+	return x / (x + vec3(1.0));
+}
+
 // Converts a color from linear light gamma to sRGB gamma
 vec3 fromLinear(vec3 linearRGB)
 {

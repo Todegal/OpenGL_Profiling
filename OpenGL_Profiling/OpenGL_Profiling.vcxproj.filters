@@ -96,7 +96,16 @@
     <ClCompile Include="src\forwardRenderPass.cpp">
       <Filter>Source Files\Render Passes</Filter>
     </ClCompile>
-    <ClCompile Include="src\hdrRenderPass.cpp">
+    <ClCompile Include="src\hdrPass.cpp">
+      <Filter>Source Files\Render Passes</Filter>
+    </ClCompile>
+    <ClCompile Include="src\debugPass.cpp">
+      <Filter>Source Files\Render Passes</Filter>
+    </ClCompile>
+    <ClCompile Include="src\environmentPass.cpp">
+      <Filter>Source Files\Render Passes</Filter>
+    </ClCompile>
+    <ClCompile Include="src\shadowPass.cpp">
       <Filter>Source Files\Render Passes</Filter>
     </ClCompile>
   </ItemGroup>
@@ -178,7 +187,16 @@
     <ClInclude Include="src\forwardRenderPass.h">
       <Filter>Header Files\Render Passes</Filter>
     </ClInclude>
-    <ClInclude Include="src\hdrRenderPass.h">
+    <ClInclude Include="src\hdrPass.h">
+      <Filter>Header Files\Render Passes</Filter>
+    </ClInclude>
+    <ClInclude Include="src\debugPass.h">
+      <Filter>Header Files\Render Passes</Filter>
+    </ClInclude>
+    <ClInclude Include="src\environmentPass.h">
+      <Filter>Header Files\Render Passes</Filter>
+    </ClInclude>
+    <ClInclude Include="src\shadowPass.h">
       <Filter>Header Files\Render Passes</Filter>
     </ClInclude>
   </ItemGroup>

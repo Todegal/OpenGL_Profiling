@@ -45,8 +45,8 @@ CharacterController::CharacterController(InputHandler& inputHandler, glm::vec3 s
 
 	viewAzimuth = glm::radians(0.0f);
 	viewPolar = glm::radians(40.0f);
-	radius = 2.0f;
-	height = 1.8f;
+	radius = 1.8f;
+	height = 1.5f;
 
 	viewCamera.center = position + glm::vec3(0.0f, height, 0.0f);
 

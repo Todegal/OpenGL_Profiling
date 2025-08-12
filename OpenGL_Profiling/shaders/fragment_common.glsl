@@ -1,14 +1,18 @@
 mat3 getTBN(vec3 worldPos, vec3 normal, vec2 texCoords)
 {
-    vec3 Q1 =   dFdx(worldPos);
-    vec3 Q2 =   dFdy(worldPos);
-    vec2 st1 =  dFdx(texCoords);
-    vec2 st2 =  dFdy(texCoords);
+    // get edge vectors of the pixel triangle
+    vec3 dp1 = dFdx( worldPos );
+    vec3 dp2 = dFdy( worldPos );
+    vec2 duv1 = dFdx( texCoords );
+    vec2 duv2 = dFdy( texCoords );
 
-    vec3 N = normalize(normal);
-    vec3 T = normalize(Q1 * st2.t - Q2 * st1.t);
-    vec3 B = -normalize(cross(N, T));
-    mat3 TBN = mat3(T, B, N);
+    // solve the linear system
+    vec3 dp2perp = cross( dp2, normal );
+    vec3 dp1perp = cross( normal, dp1 );
+    vec3 T = dp2perp * duv1.x + dp1perp * duv2.x;
+    vec3 B = dp2perp * duv1.y + dp1perp * duv2.y;
 
-    return TBN;
+    // construct a scale-invariant frame 
+    float invmax = inversesqrt( max( dot(T,T), dot(B,B) ) );
+    return mat3( T * invmax, B * invmax, normal );
 }

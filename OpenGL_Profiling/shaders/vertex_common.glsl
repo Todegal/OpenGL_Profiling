@@ -4,39 +4,45 @@ layout(location = 2) in vec2 aTexCoords;
 layout(location = 3) in vec4 aBoneIds;
 layout(location = 4) in vec4 aBoneWeights;
 
-layout(std430) buffer JointsBuffer
-{
-    mat4 bJointMatrices[];
-};
-
-layout (std140) uniform ObjectBuffer
-{
-    mat4 uModelMatrix;
-    mat3 uNormalMatrix;
-};
-
 struct SkinnedVertex
 {
     vec3 position;
     vec3 normal;
 };
 
+layout(std430) buffer JointsBuffer
+{
+    mat4 bJointMatrices[];
+};
+
+struct InstanceTransform
+{
+    mat4 modelMatrix;
+    mat3 normalMatrix;
+};
+
+layout (std140) buffer InstanceBuffer
+{
+    InstanceTransform bInstanceTransforms[];
+};
+
+uniform int uInstanceOffset;    
+
 SkinnedVertex applySkinning(vec3 position, vec3 normal, vec4 boneIds, vec4 boneWeights)
 {
-    vec3 transformedPosition = vec3(0);
-    vec3 transformedNormal = vec3(0);
+    SkinnedVertex vtx = SkinnedVertex(position, normal);
 
-    for (int i = 0; i < 4; i++)
+    if (boneWeights.w < boneWeights.x)
     {
-        transformedPosition += boneWeights[i] * (bJointMatrices[int(boneIds[i])] * vec4(position, 1.0)).xyz;
-        transformedNormal += boneWeights[i] * (mat3(bJointMatrices[int(boneIds[i])]) * normal);
+        vtx.position = vec3(0.0);
+        vtx.normal = vec3(0.0);
+
+        for (int i = 0; i < 4; i++)
+        {
+            vtx.position += boneWeights[i] * (bJointMatrices[int(boneIds[i])] * vec4(position, 1.0)).xyz;
+            vtx.normal += boneWeights[i] * (mat3(bJointMatrices[int(boneIds[i])]) * normal);
+        }
     }
 
-    if (transformedPosition == vec3(0.0) || boneWeights.w > boneWeights.x)
-    {
-        transformedPosition = position;
-        transformedNormal = normal;
-    }
-
-    return SkinnedVertex(transformedPosition, transformedNormal);
+    return vtx;
 }

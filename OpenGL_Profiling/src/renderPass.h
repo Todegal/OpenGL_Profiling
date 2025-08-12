@@ -5,17 +5,17 @@
 #include "shaderProgram.h"
 
 #include <stack>
-
-constexpr inline uint8_t NUM_CASCADES = 5;
+#include <bitset>
 
 enum RenderFlags : uint32_t {
 	NORMALS_ENABLED = 0,
 	OCCLUSION_ENABLED,
 	SHADOWS_ENABLED,
-	ENVIRONMENT_MAP_ENABLED,
+	ENVIRONMENT_ENABLED,
 	EMULATE_SUN_ENABLED,
 	DEFERRED_PASS_ENABLED,
 	HDR_PASS_ENABLED,
+	DEBUG_PASS_ENABLED,
 	NUM_FLAGS
 };
 
@@ -43,7 +43,6 @@ public:
 	void bindBuffers(ShaderProgram& program) const;
 	void bufferData(const std::string& name, size_t size, const void* data);
 };
-
 
 class FramebufferStack
 {
@@ -80,10 +79,13 @@ private:
 
 struct RenderContext
 {
-	std::array<bool, RenderFlags::NUM_FLAGS> flags;
+	std::array<bool, NUM_FLAGS> flags;
 	glm::ivec2 dimensions;
 	glm::mat4 projectionMatrix;
 	float nearPlane, farPlane;
+
+	float pointShadowNearPlane, pointShadowFarPlane;
+	int pointShadowMapDimensions;
 
 	std::map<std::string, GLuint> textures;
 	ShaderBufferManager buffers;
@@ -97,6 +99,8 @@ struct RenderContext
 		dimensions(), 
 		projectionMatrix(), 
 		nearPlane(), farPlane(),
+		pointShadowNearPlane(), pointShadowFarPlane(),
+		pointShadowMapDimensions(),
 		textures(), 
 		buffers(),
 		scene(nullptr),
@@ -117,7 +121,7 @@ protected:
 	
 	void renderPrimitive(const std::shared_ptr<MeshPrimitive>& prim);
 
-	void parseMaterialProperties(const std::vector<GLuint>& textures, const tinygltf::Material& materialDesc);
+	void parseMaterialProperties(const std::vector<GLuint>& textureIDs, const tinygltf::Material& materialDesc, ShaderProgram& shaderProgram);
 
 public:
 	virtual void frame() = 0;

@@ -1,6 +1,6 @@
-#include "hdrRenderPass.h"
+#include "hdrPass.h"
 
-HDRRenderPass::HDRRenderPass(RenderContext& renderContext)
+HDRPass::HDRPass(RenderContext& renderContext)
 	: RenderPass(renderContext), quad(RenderableModel::constructUnitQuad())
 {
 	glGenFramebuffers(1, &framebuffer);
@@ -28,11 +28,11 @@ HDRRenderPass::HDRRenderPass(RenderContext& renderContext)
 		throw std::runtime_error("Incomplete HDR Framebuffer!");
 	}
 
-	hdrPassShader.addShader(GL_VERTEX_SHADER, "shaders/hdr_pass/hdr_pass.vert.glsl");
-	hdrPassShader.addShader(GL_FRAGMENT_SHADER, "shaders/hdr_pass/hdr_pass.frag.glsl");
+	hdrPassShader.addShader(GL_VERTEX_SHADER, "hdr_pass/hdr_pass.vert");
+	hdrPassShader.addShader(GL_FRAGMENT_SHADER, "hdr_pass/hdr_pass.frag");
 }
 
-void HDRRenderPass::frame()
+void HDRPass::frame()
 {
 	hdrPassShader.use();
 
@@ -47,9 +47,14 @@ void HDRRenderPass::frame()
 	const auto& quadPrim = quad->getPrimitives()[0];
 
 	renderPrimitive(quadPrim);
+
+	glBlitNamedFramebuffer(framebuffer, 0,
+		0, 0, renderContext.dimensions.x, renderContext.dimensions.y, 
+		0, 0, renderContext.dimensions.x, renderContext.dimensions.y, 
+		GL_DEPTH_BUFFER_BIT, GL_NEAREST);
 }
 
-void HDRRenderPass::refresh()
+void HDRPass::refresh()
 {
 	ScopedFramebufferBind framebufferBind(renderContext.framebufferStack, framebuffer);
 
@@ -60,3 +65,4 @@ void HDRRenderPass::refresh()
 	glBindTexture(GL_TEXTURE_2D, colourTexture);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, renderContext.dimensions.x, renderContext.dimensions.y, 0, GL_RGBA, GL_FLOAT, 0);
 }
+

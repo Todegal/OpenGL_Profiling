@@ -1,9 +1,11 @@
-#version 460
+#version 460 // forward_pass.frag
 
-#include "../uniforms_common.glsl"
+//#extension GL_ARB_bindless_texture : enable
+
 #include "../fragment_common.glsl"
-#include "../pbr_functions.glsl"
 #include "../pbr.glsl"
+
+#line 10
 
 in VS_OUT
 {
@@ -32,17 +34,34 @@ void main()
 		metalMask *= mr.b;
 	}
 
-	vec3 normalVector = normalize(fs_in.normal);
+    vec3 normalVector = normalize(fs_in.normal);
 
 	if (uNormalMap.isTextureEnabled)
 	{
 		vec3 textureNormal = texture(uNormalMap.textureMap, fs_in.texCoords).rgb;
 		vec3 scaledNormal;
+
 		scaledNormal.xy = (textureNormal.rg * 2 - 1) * uNormalMap.factor.x;
 		scaledNormal.z = (textureNormal.b * 2 - 1);
 
-		normalVector = normalize(getTBN(fs_in.worldPos, fs_in.normal, fs_in.texCoords) * scaledNormal);
+        mat3 tbnMatrix = getTBN(fs_in.worldPos, fs_in.normal, fs_in.texCoords);
+
+        if (any(isnan(tbnMatrix[0])) || any(isinf(tbnMatrix[0])) || 
+        any(isnan(tbnMatrix[1])) || any(isinf(tbnMatrix[1])) || 
+        any(isnan(tbnMatrix[2])) || any(isinf(tbnMatrix[2])))
+        {
+            vFragColour = vec4(0, 0, 1, 1);
+            return;
+        }
+
+		normalVector = normalize(tbnMatrix * scaledNormal);
 	}
+
+    if (any(isnan(normalVector)) || any(isinf(normalVector))) 
+    {
+        vFragColour = vec4(0, 1, 1, 1);
+        return;
+    }
 
     const vec3 viewVector = normalize(uCameraPosition - fs_in.worldPos);
 
@@ -50,16 +69,27 @@ void main()
 
     for (int i = 0; i < uNumPointLights; i++)
     {
+        float shadow = 0;
+        if (uShadowsEnabled)
+        {
+            shadow = calculatePointShadow(
+                fs_in.worldPos,
+                bPointLights[i].position.xyz,
+                uCameraPosition,
+                i
+            );
+        }
+
         Lo += calculateLightContribution(
-            vec3(1.0, 1.0, 1.0),
-            1.0,
-            0.0,
+            baseColour.rgb,
+            roughness,
+            metalMask,
             normalVector,
             viewVector,
             fs_in.worldPos,
             normalize(bPointLights[i].position.xyz - fs_in.worldPos),
             attenuatePointLight(bPointLights[i].position.xyz, bPointLights[i].radiance.rgb, fs_in.worldPos)
-        );
+        ) * (1 - shadow);
     }
 
     for (int i = 0; i < uNumDirectionalLights; i++)
@@ -76,10 +106,26 @@ void main()
         );
     }
 
-    if (uOcclusionMap.isTextureEnabled)
-	{
-		Lo = mix(Lo, Lo * texture(uOcclusionMap.textureMap, fs_in.texCoords).r, uOcclusionMap.factor.r);
-	}
+    // if (uOcclusionMap.isTextureEnabled)
+	// {
+	// 	Lo = mix(Lo, Lo * texture(uOcclusionMap.textureMap, fs_in.texCoords).r, uOcclusionMap.factor.r);
+	// }
+
+    if (uEnvironmentMapEnabled)
+    {
+        Lo += calculateAmbientLightContribution(
+            baseColour.rgb,
+            roughness,
+            metalMask,
+            normalVector,
+            viewVector
+        );
+    }
 
 	vFragColour = vec4(Lo, baseColour.a);
+
+    if (any(isnan(vFragColour)) || any(isinf(vFragColour))) 
+    {
+        vFragColour = vec4(1, 0, 1, 1); 
+    }
 }

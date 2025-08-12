@@ -54,7 +54,7 @@ public:
 			glm::mat4 t = glm::translate(glm::mat4(1.0f), translation);
 			glm::mat4 r = glm::toMat4(rotation);
 			glm::mat4 s = glm::scale(glm::mat4(1.0f), scale);
-			localTransform = t * (s * r); // note: order can vary by convention
+			localTransform = t * (r * s); // note: order can vary by convention
 			localDirty = false;
 		}
 		return localTransform;

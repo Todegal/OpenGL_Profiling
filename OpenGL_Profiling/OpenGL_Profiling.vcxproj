@@ -120,6 +120,14 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>spdlogd.lib;opengl32.lib;glfw3dll.lib;</AdditionalDependencies>
     </Link>
+    <PreBuildEvent>
+      <Command>
+      </Command>
+    </PreBuildEvent>
+    <PostBuildEvent>
+      <Command>
+      </Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -138,6 +146,14 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>spdlog.lib;opengl32.lib;glfw3.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PreBuildEvent>
+      <Command>
+      </Command>
+    </PreBuildEvent>
+    <PostBuildEvent>
+      <Command>
+      </Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\..\shared\GLAD\src\glad.c" />
@@ -151,8 +167,10 @@
     <ClCompile Include="..\Dependencies\imgui-docking\misc\cpp\imgui_stdlib.cpp" />
     <ClCompile Include="src\animationController.cpp" />
     <ClCompile Include="src\characterController.cpp" />
+    <ClCompile Include="src\debugPass.cpp" />
+    <ClCompile Include="src\environmentPass.cpp" />
     <ClCompile Include="src\forwardRenderPass.cpp" />
-    <ClCompile Include="src\hdrRenderPass.cpp" />
+    <ClCompile Include="src\hdrPass.cpp" />
     <ClCompile Include="src\imguiWindows.cpp" />
     <ClCompile Include="src\inputHandler.cpp" />
     <ClCompile Include="src\main.cpp" />
@@ -169,6 +187,7 @@
     </ClCompile>
     <ClCompile Include="src\renderPass.cpp" />
     <ClCompile Include="src\shaderProgram.cpp" />
+    <ClCompile Include="src\shadowPass.cpp" />
     <ClCompile Include="src\timer.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -185,7 +204,10 @@
     <ClInclude Include="..\Dependencies\imgui-docking\imstb_textedit.h" />
     <ClInclude Include="..\Dependencies\imgui-docking\imstb_truetype.h" />
     <ClInclude Include="..\Dependencies\imgui-docking\misc\cpp\imgui_stdlib.h" />
-    <ClInclude Include="src\hdrRenderPass.h" />
+    <ClInclude Include="src\shadowPass.h" />
+    <ClInclude Include="src\environmentPass.h" />
+    <ClInclude Include="src\debugPass.h" />
+    <ClInclude Include="src\hdrPass.h" />
     <ClInclude Include="src\forwardRenderPass.h" />
     <ClInclude Include="src\pbrRenderer.h" />
     <ClInclude Include="src\renderPass.h" />

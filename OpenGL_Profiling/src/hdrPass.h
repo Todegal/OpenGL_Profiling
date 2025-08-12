@@ -2,10 +2,10 @@
 
 #include "renderPass.h"
 
-class HDRRenderPass : public RenderPass
+class HDRPass : public RenderPass
 {
 public:
-	HDRRenderPass(RenderContext& renderContext);
+	HDRPass(RenderContext& renderContext);
 
 public:
 	// Inherited via RenderPass

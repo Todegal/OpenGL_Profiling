@@ -103,7 +103,7 @@ void main()
 
 		if (uShadowsEnabled)
 		{
-			const vec3 invLightVector = worldPos - bLights[i].position;
+			const vec3 invLightVector = worldPos - bLights[i].position; 
 			const float currentDepth = length(invLightVector);
 
 			const float viewDistance = length(uCameraPosition - worldPos);

@@ -116,3 +116,26 @@ float Fd_Lambert()
 {
     return INV_PI;
 }
+
+vec2 VogelDiskSample(int sampleIndex, int samplesCount, float phi)
+{
+    const float GoldenAngle = 2.4; // Define the constant for better practice
+
+    float r = sqrt(float(sampleIndex) + 0.5) / sqrt(float(samplesCount));
+    float theta = float(sampleIndex) * GoldenAngle + phi;
+
+    return vec2(r * cos(theta), r * sin(theta));
+}
+
+// https://www.shadertoy.com/view/ftKfzc
+float InterleavedGradientNoise(vec2 uv) {
+	// magic values are found by experimentation
+	uv += (vec2(47, 17) * 0.695);
+
+    vec3 magic = vec3( 0.06711056, 0.00583715, 52.9829189 );
+    
+    //https://juejin.cn/post/6844903687505068045
+    //vec3 magic = vec3( 12.9898, 78.233, 43758.5453123 );
+    
+    return fract(magic.z * fract(dot(uv, magic.xy)));
+}

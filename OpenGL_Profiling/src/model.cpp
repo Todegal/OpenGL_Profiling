@@ -71,7 +71,8 @@ void RenderableModel::setJoints(const std::unordered_map<int, TransformOffset>& 
 
 RenderableModel::~RenderableModel()
 {
-	glDeleteBuffers(static_cast<GLsizei>(buffers.size()), buffers.data());
+	glDeleteBuffers(static_cast<GLsizei>(buffers.size()), buffers.data());	
+
 	glDeleteTextures(static_cast<GLsizei>(textures.size()), textures.data());
 }
 
@@ -518,9 +519,11 @@ void RenderableModel::loadTextures(const tinygltf::Model& model)
 			sampler.minFilter == GL_LINEAR_MIPMAP_LINEAR) {
 			glGenerateMipmap(GL_TEXTURE_2D);
 		}
+
+		//textureHandles[i] = glGetTextureHandleARB(textures[i]);
+		//glMakeTextureHandleResidentARB(textureHandles[i]);
 	}
 
-	glBindTexture(GL_TEXTURE_2D, 0);
 }
 
 void RenderableModel::loadNodes(const tinygltf::Model& model)

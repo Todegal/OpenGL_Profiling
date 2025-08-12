@@ -1,26 +1,28 @@
+// SSBOs and UBOs common binding, even if not needed having symbols helps with debugging
+
 #define NUM_CASCADES 5
 
-layout (std140) uniform FlagsBuffer
+layout (std140) uniform FlagUniforms
 {
-    bool uNormalsEnabled;
-    bool uOcclusionEnabled;
-    bool uShadowsEnabled;
-    bool uEnvironmentMapEnabled;
-    bool uEmulateSunEnabled;
-    bool uDeferredPassEnabled;
-    bool uHDRPassEnabled;
+    uint uFlagsBits;
 };
 
-layout(std140) uniform FrameUniformsBuffer
+bool uNormalsEnabled            = (uFlagsBits & (1 << 0)) != 0;
+bool uOcclusionEnabled          = (uFlagsBits & (1 << 1)) != 0;
+bool uShadowsEnabled            = (uFlagsBits & (1 << 2)) != 0;
+bool uEnvironmentMapEnabled     = (uFlagsBits & (1 << 3)) != 0;
+bool uEmulateSunEnabled 	    = (uFlagsBits & (1 << 4)) != 0;
+bool uDeferredPassEnabled 	    = (uFlagsBits & (1 << 5)) != 0;
+bool uHDRPassEnabled 	        = (uFlagsBits & (1 << 6)) != 0;
+bool uDebugPassEnabled 	        = (uFlagsBits & (1 << 7)) != 0;
+
+layout(std140) uniform FrameUniforms
 {
     mat4 uProjectionMatrix;
     mat4 uViewMatrix;
     vec3 uCameraPosition;
 
     vec4 uDirectionalShadowCascadePlanes;
-
-    float uPointShadowFarPlane;
-    float uPointShadowNearPlane;
 
     int uNumPointLights;
     int uNumDirectionalLights;
@@ -48,3 +50,4 @@ layout(std430) buffer DirectionalLightBuffer
 {
     DirectionalLight bDirectionalLights[];
 };
+

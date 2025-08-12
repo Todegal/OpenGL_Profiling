@@ -85,7 +85,7 @@ int main()
 
 	//glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
-	GLFWwindow* window =
+	GLFWwindow* window = // nullptr;
 		glfwCreateWindow(WIDTH, HEIGHT, "-- OpenGL_Profiling --", nullptr, nullptr);
 
 	if (!window)
@@ -125,6 +125,8 @@ int main()
 	spdlog::info("Vendor: {}", reinterpret_cast<const char*>(glGetString(GL_VENDOR)));
 	spdlog::info("GLSL Version: {}", reinterpret_cast<const char*>(glGetString(GL_SHADING_LANGUAGE_VERSION)));
 
+	glEnable(GL_NV_bindless_texture);
+
 	glEnable(GL_DEBUG_OUTPUT);
 	glDebugMessageCallback(gl_error_callback, 0);
 
@@ -156,7 +158,8 @@ int main()
 	PBRRenderer renderer(glm::ivec2(WIDTH, HEIGHT), std::make_shared<OrbitCamera>(std::move(orbitCamera)));
 
 	std::vector<std::string> modelPaths = {
-		"C:\\Users\\Niall Townley\\Documents\\Source\\Viper\\Models\\Sponza\\glTF\\Sponza.gltf"
+		"C:/Users/Niall Townley/Documents/Source/test_environments/Bistro_v5_2/BistroExterior.glb"
+		//"C:\\Users\\Niall Townley\\Documents\\Source\\Viper\\Models\\Sponza\\glTF\\Sponza.gltf"
 		//"C:\\Users\\Niall Townley\\Documents\\Source\\Viper\\Models\\Statue\\greek-slave-plaster-cast-150k-4096-web.gltf",
 		//"../Models/Board/Board.glb"
 	};
@@ -164,7 +167,7 @@ int main()
 
 	std::vector<std::shared_ptr<RenderableModel>> models;
 
-	std::for_each(std::execution::par, modelPaths.begin(), modelPaths.end(), 
+	std::for_each(std::execution::par, modelPaths.begin(), modelPaths.end(),
 		[&loadedModels](const std::string& path)
 		{
 			loadedModels.push_back(RawModel(path));
@@ -172,57 +175,60 @@ int main()
 	);
 
 	std::for_each(loadedModels.begin(), loadedModels.end(),
-		[&models] (RawModel& m) {
+		[&models](RawModel& m) {
 			models.push_back(std::make_shared<RenderableModel>(m.extract()));
 		}
 	);
 
+	//models[0]->getTransform()->setScale(glm::vec3(0.65f));
+
 	models.push_back(character.getModel());
 
-	std::vector<Light> lights;
-	lights.push_back(
-		{
-			{ 1, 1, 0 },
-			{ 1, 0, 0 },
-			10.0f, Light::POINT
-		}
-	);
+	std::vector<PointLight> lights;
+	//lights.push_back(
+	//	{
+	//		{ 1, 1, 0 },
+	//		{ 1, 0, 0 },
+	//		10.0f
+	//	}
+	//);
 
 	lights.push_back(
 		{
 			{ 0, 2, 0 },
 			{ 0, 1, 0 },
-			10.0f, Light::POINT
+			10.0f
 		}
 	);
 
-	lights.push_back(
-		{
-			{ 0, 1, 1 },
-			{ 0, 0, 1 },
-			10.0f, Light::POINT
-		}
-	);
+	//lights.push_back(
+	//	{
+	//		{ 0, 1, 1 },
+	//		{ 0, 0, 1 },
+	//		10.0f
+	//	}
+	//);
 
 	int nLights = 0;
 
 	for (size_t i = 0; i < nLights; i++)
 	{
-		glm::vec3 position = { glm::linearRand(-2.0f, 2.0f), glm::linearRand(0.2f, 5.0f), glm::linearRand(-4.0f, 4.0f) };
+		glm::vec3 position = { glm::linearRand(-20.0f, 20.0f), glm::linearRand(0.2f, 10.0f), glm::linearRand(-20.0f, 20.0f) };
 		glm::vec3 colour = { glm::linearRand(0.0f, 1.0f), glm::linearRand(0.0f, 1.0f), glm::linearRand(0.0f, 1.0f) };
 
 		lights.push_back(
 			{
 				glm::vec4(position, 1.0f),
 				colour,
-				20.0f
+				10.0f
 			}
 		);
 	}
 
 	std::shared_ptr<Scene> scene = std::make_shared<Scene>();
 
-	scene->sceneLights = lights;
+	scene->scenePointLights = lights;
+	scene->sceneDirectionalLights = { };
 	scene->sceneModels = models;
 	scene->environmentMap = "C://Users/Niall Townley/Documents/Source/Viper/Environments/818-hdri-skies-com.hdr";
 
@@ -252,8 +258,6 @@ int main()
 			data->scroll = static_cast<float>(y);
 		});
 
-
-	glm::mat4 projectionMatrix = glm::perspective(90.0f, static_cast<float>(WIDTH) / static_cast<float>(HEIGHT), 0.00001f, 10000.0f);
 
 	while (!glfwWindowShouldClose(window))
 	{

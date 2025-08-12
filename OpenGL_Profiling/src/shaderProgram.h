@@ -9,6 +9,7 @@
 #include <vector>
 #include <filesystem>
 #include <unordered_map>
+#include <unordered_set>
 
 class ShaderProgram
 {
@@ -19,13 +20,15 @@ private:
 		const std::filesystem::path path;
 	};
 
+	const std::filesystem::path shaderSourceDirectory = "./shaders/";
+	const std::filesystem::path shaderBinaryDirectory = shaderSourceDirectory / "build";
+
 public:
 	ShaderProgram(const std::filesystem::path vertexShader, const std::filesystem::path fragmentShader);
 	ShaderProgram();
 	~ShaderProgram();
 
 public:
-
 	const GLuint getProgramId() const { return programId; }
 
 	void addShader(GLenum stage, const std::filesystem::path shaderPath);
@@ -33,6 +36,8 @@ public:
 	void linkProgram();
 	
 	void use();
+
+public:
 
 	inline const GLint getLocation(const std::string& name) const 
 	{
@@ -106,6 +111,10 @@ public:
 
 private:
 	bool compileShader(GLuint shader, const std::filesystem::path shaderPath);
+
+	void loadFile(const std::filesystem::path& path, std::unordered_set<std::filesystem::path>& processedFiles, std::stringstream& shaderStream);
+	std::string loadShaderSource(const std::filesystem::path path);
+	std::vector<char> loadShaderBinary(const std::filesystem::path path);
 
 private:
 	bool isLinked;

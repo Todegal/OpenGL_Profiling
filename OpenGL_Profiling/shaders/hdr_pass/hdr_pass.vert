@@ -1,6 +1,6 @@
 #version 460
 
-#include "../vertex_common.glsl"
+layout(location = 0 ) in vec3 aPosition;
 
 void main()
 {
