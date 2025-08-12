@@ -35,15 +35,6 @@ const std::vector<ProfileEvent>& GetCurrentFrameEvents();
 const std::vector<ProfileEvent>& GetLastFrameEvents();
 const RegionInfo& GetRegionInfo(uint32_t id);
 
-struct ProfilerStats
-{
-        size_t totalEvents = 0;
-        size_t maxDepth = 0;
-        std::chrono::nanoseconds totalTime{0};
-};
-
-ProfilerStats GetFrameStats();
-
 }; // namespace Profiler
 
 class ScopedProfile
@@ -83,11 +74,11 @@ class ScopedProfile
         static const uint32_t COMBINE(__profilerID, __LINE__) = Profiler::RegisterRegion(name, __FILE__, __LINE__);    \
         ScopedProfile COMBINE(__scopedProfile, __LINE__)(COMBINE(__profilerID, __LINE__));
 
-#define PROFILE_FUNCTION() PROFILE_SCOPE(FUNC_NAME)
+#define PROFILE_FUNCTION() PROFILE_SCOPE(FUNC_NAME);
 
 #else
 
-#define PROFILE_FUNCTION() ((void)0)
-#define PROFILE_SCOPE(name) ((void)0)
+#define PROFILE_FUNCTION() ((void)0);
+#define PROFILE_SCOPE(name) ((void)0);
 
 #endif

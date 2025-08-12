@@ -78,32 +78,12 @@ const std::vector<ProfileEvent>& GetLastFrameEvents()
 
 const std::vector<ProfileEvent>& GetCurrentFrameEvents()
 {
-    return threadData.events[threadData.writeIdx];
+        return threadData.events[threadData.writeIdx];
 }
 
 const RegionInfo& GetRegionInfo(uint32_t id)
 {
         return regionRegister.at(id);
-}
-
-ProfilerStats GetFrameStats()
-{
-        ProfilerStats stats;
-        const auto& events = GetLastFrameEvents();
-
-        stats.totalEvents = events.size();
-
-        for (const auto& event : events)
-        {
-                stats.maxDepth = std::max(stats.maxDepth, static_cast<size_t>(event.depth));
-                if (event.endTime > event.startTime)
-                {
-                        stats.totalTime +=
-                            std::chrono::duration_cast<std::chrono::nanoseconds>(event.endTime - event.startTime);
-                }
-        }
-
-        return stats;
 }
 
 }; // namespace Profiler

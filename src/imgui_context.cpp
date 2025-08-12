@@ -45,7 +45,7 @@ void EngineImGuiContext::draw()
 
         drawMenuBar();
         if (showMetrics) { drawMetrics(); }
-        if (showProfiler) { profiler.render(); }
+        if (showProfiler) { profiler.render(&showProfiler); }
 
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());

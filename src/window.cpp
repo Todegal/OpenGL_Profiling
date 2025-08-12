@@ -33,7 +33,7 @@ void GLFWContext::pollEvents()
 
 Window::Window(const GLFWContext&, int startWidth, int startHeight, std::string title, const WindowFlags& flags)
 {
-        PROFILE_FUNCTION()
+        PROFILE_FUNCTION();
 
         glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
         glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);

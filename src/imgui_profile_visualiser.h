@@ -21,7 +21,7 @@ class ImGuiProfileVisualiser
         ~ImGuiProfileVisualiser() = default;
 
         // Main render function - call this in your ImGui render loop
-        void render();
+        void render(bool* open);
 
         void updateInitEvents(const std::vector<Profiler::ProfileEvent>& initEvents);
 
@@ -52,11 +52,6 @@ class ImGuiProfileVisualiser
         std::chrono::nanoseconds minStartTime{0};
 
         // UI state
-        bool showTreeView = true;
-        bool showTimeline = true;
-        bool showStatistics = true;
-        float timelineHeight = 200.0f;
-        float treeViewWidth = 300.0f;
         int selectedEventId = -1;
 
         // Private methods
@@ -87,7 +82,6 @@ class ImGuiProfileVisualiser
         // Utility functions
         std::string formatDuration(std::chrono::nanoseconds duration) const;
         std::string formatPercentage(std::chrono::nanoseconds part, std::chrono::nanoseconds total) const;
-        const char* getEventName(uint32_t eventId) const;
 
         // Input handling
         void handleTimelineInput(const ImVec2& canvasPos, const ImVec2& canvasSize);

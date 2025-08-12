@@ -3,7 +3,10 @@
 #include <cstring>
 #include <limits>
 #include <memory>
+
+#define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
+#undef STB_IMAGE_IMPLEMENTATION
 
 #include <assimp/Importer.hpp>
 #include <assimp/material.h>
@@ -128,7 +131,10 @@ RawTexture::RawTexture(const aiTexture* texture)
                 uint8_t* data = stbi_load_from_memory(reinterpret_cast<stbi_uc*>(texture->pcData), texture->mWidth, &x,
                                                       &y, &comp, 0);
 
-                if (!data) { throw std::runtime_error(std::format("Failed to load filepath: {}", filename)); }
+                if (!data)
+                {
+                        throw std::runtime_error(std::format("Failed to load texture from memory: {}", filename));
+                }
 
                 width = x;
                 height = y;
@@ -200,4 +206,5 @@ RawMaterial::RawMaterial(const aiMaterial* material, aiTexture** textures, const
         {
                 albedoTexture = std::make_unique<RawTexture>(albedoTexturePath.C_Str(), rootDir);
         }
+        else { throw std::runtime_error("Cannot create material without albedo texture!"); }
 }

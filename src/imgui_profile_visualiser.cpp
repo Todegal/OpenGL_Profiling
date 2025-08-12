@@ -8,11 +8,15 @@
 
 ImGuiProfileVisualiser::ImGuiProfileVisualiser()
 {
+        PROFILE_FUNCTION();
 }
 
-void ImGuiProfileVisualiser::render()
+void ImGuiProfileVisualiser::render(bool* open)
 {
-        if (!ImGui::Begin(m_windowTitle.c_str()))
+        PROFILE_FUNCTION();
+
+        ImGui::SetNextWindowSize(ImVec2(800, 400), ImGuiCond_FirstUseEver);
+        if (!ImGui::Begin(m_windowTitle.c_str(), open))
         {
                 ImGui::End();
                 return;
@@ -23,53 +27,36 @@ void ImGuiProfileVisualiser::render()
         // Update button
         if (ImGui::Button("Refresh Data")) { processEvents(m_viewMode); }
 
-        ImGui::SameLine();
-        ImGui::Checkbox("Tree View", &showTreeView);
-        ImGui::SameLine();
-        ImGui::Checkbox("Timeline", &showTimeline);
-        ImGui::SameLine();
-        ImGui::Checkbox("Statistics", &showStatistics);
-
         ImGui::Separator();
 
-        // Create main layout
-        if (showTreeView && showTimeline)
+        // Split layout
         {
-                // Split layout
-                ImGui::BeginChild("TreeViewPane", ImVec2(treeViewWidth, 0), true);
+                ImGui::BeginChild("LeftProfilerPane", ImVec2(300, 0), ImGuiChildFlags_Borders | ImGuiChildFlags_ResizeX,
+                                  ImGuiWindowFlags_HorizontalScrollbar);
                 renderTreeView();
                 ImGui::EndChild();
+        }
 
-                ImGui::SameLine();
+        ImGui::SameLine();
 
-                ImGui::BeginChild("TimelinePane", ImVec2(0, 0), true);
-                renderTimeline();
-                if (showStatistics)
+        {
+                ImGui::BeginChild("RightProfilerPane", ImVec2(0, 0), ImGuiChildFlags_Borders);
+
                 {
+                        ImGui::BeginChild("TimelinePane", ImVec2(0, 400), ImGuiChildFlags_ResizeY);
+                        renderTimeline();
+                        ImGui::EndChild();
+                }
+
+                {
+                        ImGui::BeginChild("StatisticsPane", ImVec2(0, 100));
                         ImGui::Separator();
                         renderStatistics();
+                        ImGui::EndChild();
                 }
+
                 ImGui::EndChild();
         }
-        else if (showTreeView)
-        {
-                renderTreeView();
-                if (showStatistics)
-                {
-                        ImGui::Separator();
-                        renderStatistics();
-                }
-        }
-        else if (showTimeline)
-        {
-                renderTimeline();
-                if (showStatistics)
-                {
-                        ImGui::Separator();
-                        renderStatistics();
-                }
-        }
-        else if (showStatistics) { renderStatistics(); }
 
         ImGui::End();
 }
@@ -82,6 +69,8 @@ void ImGuiProfileVisualiser::updateInitEvents(const std::vector<Profiler::Profil
 
 void ImGuiProfileVisualiser::processEvents(ViewMode type)
 {
+        PROFILE_FUNCTION();
+
         const auto& events = (type == ViewMode::Initialization) ? initEvents : Profiler::GetLastFrameEvents();
         if (type == ViewMode::Frame) { frameEvents = events; }
 
@@ -118,6 +107,7 @@ void ImGuiProfileVisualiser::processEvents(ViewMode type)
 std::vector<std::shared_ptr<ImGuiProfileVisualiser::EventNode>> ImGuiProfileVisualiser::buildEventTree(
     const std::vector<Profiler::ProfileEvent>& events)
 {
+        PROFILE_FUNCTION();
         std::vector<std::shared_ptr<EventNode>> roots;
         std::vector<std::shared_ptr<EventNode>> stack;
 
@@ -155,6 +145,8 @@ std::vector<std::shared_ptr<ImGuiProfileVisualiser::EventNode>> ImGuiProfileVisu
 
 void ImGuiProfileVisualiser::calculateTimings(std::shared_ptr<EventNode> node, std::chrono::nanoseconds baseTime)
 {
+        PROFILE_FUNCTION();
+
         node->startOffset -= baseTime;
 
         for (auto& child : node->children)
@@ -165,6 +157,8 @@ void ImGuiProfileVisualiser::calculateTimings(std::shared_ptr<EventNode> node, s
 
 void ImGuiProfileVisualiser::renderModeSelector()
 {
+        PROFILE_FUNCTION();
+
         ImGui::Text("View Mode:");
         ImGui::SameLine();
 
@@ -188,6 +182,8 @@ void ImGuiProfileVisualiser::renderModeSelector()
 
 void ImGuiProfileVisualiser::renderTreeView()
 {
+        PROFILE_FUNCTION();
+
         ImGui::Text("Event Hierarchy");
         ImGui::Separator();
 
@@ -255,6 +251,8 @@ void ImGuiProfileVisualiser::renderTreeNodeRecursive(std::shared_ptr<EventNode> 
 
 void ImGuiProfileVisualiser::renderTimeline()
 {
+        PROFILE_FUNCTION();
+
         ImGui::Text("Timeline View");
         ImGui::Separator();
 
@@ -264,18 +262,15 @@ void ImGuiProfileVisualiser::renderTimeline()
                 return;
         }
 
-        // Timeline controls
-        ImGui::SliderFloat("Height", &timelineHeight, 100.0f, 400.0f);
-
         ImVec2 canvasPos = ImGui::GetCursorScreenPos();
         ImVec2 canvasSize = ImGui::GetContentRegionAvail();
-        canvasSize.y = timelineHeight;
+	canvasSize.y -= 40;
 
         ImDrawList* drawList = ImGui::GetWindowDrawList();
 
         // Background
         drawList->AddRectFilled(canvasPos, ImVec2(canvasPos.x + canvasSize.x, canvasPos.y + canvasSize.y),
-                                IM_COL32(50, 50, 50, 255));
+                                IM_COL32(25, 25, 25, 255));
 
         // Draw timeline
         for (auto& root : rootNodes)
@@ -320,7 +315,6 @@ void ImGuiProfileVisualiser::renderTimelineNode(std::shared_ptr<EventNode> node,
         nodePos.x += canvasPos.x;
         nodePos.y += canvasPos.y;
 
-        // Skip if too small to see
         if (nodeSize.x < NODE_MIN_WIDTH) return;
 
         ImDrawList* drawList = ImGui::GetWindowDrawList();
@@ -328,12 +322,10 @@ void ImGuiProfileVisualiser::renderTimelineNode(std::shared_ptr<EventNode> node,
         // Draw node rectangle
         drawList->AddRectFilled(nodePos, ImVec2(nodePos.x + nodeSize.x, nodePos.y + nodeSize.y), node->color);
 
-        // Draw border
         drawList->AddRect(nodePos, ImVec2(nodePos.x + nodeSize.x, nodePos.y + nodeSize.y),
                           IM_COL32(255, 255, 255, 100));
 
-        // Draw text if there's space
-	const auto textWidth = ImGui::CalcTextSize(node->name.c_str());
+        const auto textWidth = ImGui::CalcTextSize(node->name.c_str());
         if (nodeSize.x > textWidth.x)
         {
                 ImVec2 textPos = ImVec2(nodePos.x + 4, nodePos.y + 4);
@@ -390,6 +382,8 @@ float ImGuiProfileVisualiser::timeToPixel(std::chrono::nanoseconds time, float c
 
 void ImGuiProfileVisualiser::renderStatistics()
 {
+        PROFILE_FUNCTION();
+
         ImGui::Text("Statistics");
         ImGui::Separator();
 

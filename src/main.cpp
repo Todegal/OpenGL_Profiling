@@ -1,5 +1,6 @@
-#include "opengl_context.h"
+#include "orbit_camera.h"
 #include <glbinding/gl/bitfield.h>
+
 #define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
 
@@ -18,8 +19,10 @@
 
 #include "imgui_context.h"
 #include "input_handler.h"
+#include "opengl_context.h"
 #include "profiler.h"
 #include "raw_data.h"
+#include "simple_renderer.h"
 #include "timer.h"
 #include "window.h"
 
@@ -49,6 +52,15 @@ int main()
         EngineImGuiContext imguiContext(window, timer);
 
         InputHandler input(window);
+        input.defineAction("orbit", {}, {GLFW_MOUSE_BUTTON_1});
+        input.defineAction("zoom", {}, {GLFW_MOUSE_BUTTON_2});
+
+        OrbitCamera orbitCamera(glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f), 1.0f, 0.001f);
+
+        RawScene scene;
+        scene.addFile("../opengl/models/FlightHelmet/glTF/FlightHelmet.gltf");
+
+        SimpleRenderer renderer(glContext, scene, orbitCamera, timer);
 
         Profiler::EndRegion();
 
@@ -62,17 +74,27 @@ int main()
 
                 timer.update();
 
-                glfwContext.pollEvents();
+                if (!ImGui::GetIO().WantCaptureKeyboard && !ImGui::GetIO().WantCaptureMouse) input.pollInputs();
 
+                if (input.getAction("orbit"))
                 {
-                        PROFILE_SCOPE("glClear");
-                        gl::glClear(gl::ClearBufferMask::GL_COLOR_BUFFER_BIT);
+                        const glm::vec2 mouseOffset = input.getMouseOffset();
+
+                        orbitCamera.rotateAzimuth(mouseOffset.x * M_PI * 2.0f);
+                        orbitCamera.rotatePolar(mouseOffset.y * M_PI * 2.0f);
+                }
+                else if (input.getAction("zoom"))
+                {
+                        const glm::vec2 mouseOffset = input.getMouseOffset();
+
+                        orbitCamera.zoom(mouseOffset.y * orbitCamera.getRadius() * 10.0f);
                 }
 
-                imguiContext.draw();
+                glfwContext.pollEvents();
 
-                // if (!ImGui::GetIO().WantCaptureKeyboard && !ImGui::GetIO().WantCaptureMouse) input.pollInputs();
-		input.pollInputs();
+                renderer.render();
+
+                imguiContext.draw();
 
                 window.swapBuffers();
         }

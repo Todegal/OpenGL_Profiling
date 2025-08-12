@@ -3,7 +3,6 @@ cmake_minimum_required(VERSION 3.21)
 project(graphics_engine LANGUAGES C CXX)
 
 list(APPEND source
-	src/shader_program.cpp
 	# src/render_pass.cpp
 	src/raw_data.cpp
 	# src/pbr_renderer_old.cpp
@@ -19,14 +18,15 @@ list(APPEND source
 	# src/animation_controller.cpp
 	src/window.cpp
 	src/opengl_context.cpp
+	src/opengl_shader.cpp
 	src/profiler.cpp
 	src/imgui_profile_visualiser.cpp
+	src/simple_renderer.cpp
 )
 
 list(APPEND include
 	src/transform.h
 	src/timer.h
-	src/shader_program.h
 	src/scene.h
 	src/render_pass.h
 	src/raw_data.h
@@ -43,8 +43,10 @@ list(APPEND include
 	src/animation_controller.h
 	src/window.h
 	src/opengl_context.h
+	src/opengl_shader.h
 	src/profiler.h
 	src/imgui_profile_visualiser.h
+	src/simple_renderer.h
 )
 
 add_executable(graphics_engine ${source} ${include})

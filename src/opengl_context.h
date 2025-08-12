@@ -1,5 +1,6 @@
 #pragma once
 
+#include "profiler.h"
 #include <glbinding/AbstractFunction.h>
 #include <glbinding/CallbackMask.h>
 #include <glbinding/FunctionCall.h>
@@ -10,7 +11,8 @@
 #include <glbinding-aux/debug.h>
 #include <glbinding-aux/types_to_string.h>
 
-#include <glbinding/gl/gl.h>
+#include <glbinding/gl/enum.h>
+#include <glbinding/gl/functions.h>
 
 #define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
@@ -40,13 +42,13 @@ class GLContext
 
         void enable(gl::GLenum cap)
         {
-                if (state[cap] == false) { glEnable(cap); }
+                if (state[cap] == false) { gl::glEnable(cap); }
                 state[cap] = true;
         }
 
         void disable(gl::GLenum cap)
         {
-                if (state[cap] == true) { glDisable(cap); }
+                if (state[cap] == true) { gl::glDisable(cap); }
                 state[cap] = false;
         }
 
@@ -67,6 +69,8 @@ class GLBuffer
         GLBuffer() = delete;
         GLBuffer(const GLContext&) : allocatedSize(0)
         {
+		PROFILE_FUNCTION();
+
                 gl::glCreateBuffers(1, &bufferID);
                 spdlog::trace("Created Buffer: {}", bufferID);
         }
@@ -98,8 +102,10 @@ class GLBuffer
         template <gl::GLenum target>
         void bindBase(int base)
         {
-                static_assert(target == gl::GL_ATOMIC_COUNTER_BUFFER || target == gl::GL_TRANSFORM_FEEDBACK_BUFFER ||
-                                  target == gl::GL_UNIFORM_BUFFER || target == gl::GL_SHADER_STORAGE_BUFFER,
+                static_assert(target == gl::GLenum::GL_ATOMIC_COUNTER_BUFFER ||
+                                  target == gl::GLenum::GL_TRANSFORM_FEEDBACK_BUFFER ||
+                                  target == gl::GLenum::GL_UNIFORM_BUFFER ||
+                                  target == gl::GLenum::GL_SHADER_STORAGE_BUFFER,
                               "Must be a valid target!");
 
                 glBindBufferBase(target, base, bufferID);
@@ -109,7 +115,7 @@ class GLBuffer
         void allocate(size_t count, gl::GLenum usage)
         {
                 static_assert(std::is_trivially_copyable_v<T>);
-                glNamedBufferData(bufferID, static_cast<gl::GLsizeiptr>(count * sizeof(T)), nullptr, usage);
+                gl::glNamedBufferData(bufferID, static_cast<gl::GLsizeiptr>(count * sizeof(T)), nullptr, usage);
                 allocatedSize = count * sizeof(T);
 
                 spdlog::trace("Allocating: {} bytes for buffer: {}", sizeof(T) * count, bufferID);
@@ -121,7 +127,8 @@ class GLBuffer
                 static_assert(std::is_trivially_copyable<T>::value, "Buffer data must be copyable!");
                 if (allocatedSize < data.size() * sizeof(T)) { allocate<T>(data.size(), usage); }
 
-                glNamedBufferSubData(bufferID, 0, static_cast<gl::GLsizeiptr>(data.size() * sizeof(T)), data.data());
+                gl::glNamedBufferSubData(bufferID, 0, static_cast<gl::GLsizeiptr>(data.size() * sizeof(T)),
+                                         data.data());
         }
 
         template <typename T>
@@ -134,20 +141,21 @@ class GLBuffer
                             "Cannot sub data into an undersized buffer! Use 'bufferData' instead!");
                 }
 
-                glNamedBufferSubData(bufferID, offset, static_cast<gl::GLsizeiptr>(data.size() * sizeof(T)),
-                                     data.data());
+                gl::glNamedBufferSubData(bufferID, offset, static_cast<gl::GLsizeiptr>(data.size() * sizeof(T)),
+                                         data.data());
         }
 
       private:
         static constexpr bool isTargetValid(gl::GLenum target)
         {
-                return target == gl::GL_ARRAY_BUFFER || target == gl::GL_ATOMIC_COUNTER_BUFFER ||
-                       target == gl::GL_COPY_READ_BUFFER || target == gl::GL_COPY_WRITE_BUFFER ||
-                       target == gl::GL_DISPATCH_INDIRECT_BUFFER || target == gl::GL_DRAW_INDIRECT_BUFFER ||
-                       target == gl::GL_ELEMENT_ARRAY_BUFFER || target == gl::GL_PIXEL_PACK_BUFFER ||
-                       target == gl::GL_PIXEL_UNPACK_BUFFER || target == gl::GL_QUERY_BUFFER ||
-                       target == gl::GL_SHADER_STORAGE_BUFFER || target == gl::GL_TEXTURE_BUFFER ||
-                       target == gl::GL_TRANSFORM_FEEDBACK_BUFFER || target == gl::GL_UNIFORM_BUFFER;
+                return target == gl::GLenum::GL_ARRAY_BUFFER || target == gl::GLenum::GL_ATOMIC_COUNTER_BUFFER ||
+                       target == gl::GLenum::GL_COPY_READ_BUFFER || target == gl::GLenum::GL_COPY_WRITE_BUFFER ||
+                       target == gl::GLenum::GL_DISPATCH_INDIRECT_BUFFER ||
+                       target == gl::GLenum::GL_DRAW_INDIRECT_BUFFER || target == gl::GLenum::GL_ELEMENT_ARRAY_BUFFER ||
+                       target == gl::GLenum::GL_PIXEL_PACK_BUFFER || target == gl::GLenum::GL_PIXEL_UNPACK_BUFFER ||
+                       target == gl::GLenum::GL_QUERY_BUFFER || target == gl::GLenum::GL_SHADER_STORAGE_BUFFER ||
+                       target == gl::GLenum::GL_TEXTURE_BUFFER || target == gl::GLenum::GL_TRANSFORM_FEEDBACK_BUFFER ||
+                       target == gl::GLenum::GL_UNIFORM_BUFFER;
         }
 
       private:
@@ -161,6 +169,8 @@ class GLVertexArray
         GLVertexArray() = delete;
         GLVertexArray(const GLContext&)
         {
+		PROFILE_FUNCTION();
+
                 gl::glGenVertexArrays(1, &vaoID);
                 spdlog::trace("Created VAO: {}", vaoID);
         }
