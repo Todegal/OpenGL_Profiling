@@ -1,0 +1,37 @@
+{
+	"version": 3,
+	"cmakeMinimumRequired": {
+		"major": 3,
+		"minor": 21,
+		"patch": 0
+	},
+	"configurePresets": [
+		{
+			"name": "auto",
+			"binaryDir": "${sourceDir}/out",
+			"generator": "Ninja",
+			"cacheVariables": {
+				"CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+				"CMAKE_BUILD_TYPE": "Debug",
+				"CMAKE_COLOR_DIAGNOSTICS": "ON",
+				"CMAKE_CXX_FLAGS": "-fdiagnostics-color=always -Wall -Wextra -Werror"
+			},
+      			"toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
+		},
+		{
+			"name": "release",
+			"inherits": ["auto"],
+			"cacheVariables": {
+				"CMAKE_BUILD_TYPE": "Release"
+			}
+		},
+		{
+			"name": "profile",
+			"inherits": ["release"],
+			"cacheVariables": {
+				"CMAKE_CXX_FLAGS": "-pg"
+			}
+
+		}
+	]
+}
