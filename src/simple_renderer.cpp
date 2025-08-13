@@ -16,11 +16,11 @@
 
 SimpleRenderer::SimpleRenderer(GLContext& glContext, const RawScene& scene, const Camera& camera, const Timer<>& timer)
     : glContext(glContext), timer(timer), camera(camera),
-      shaderProgram(
-          glContext,
-          {std::make_shared<GLShader>(glContext, "shaders/forward_pass/forward_pass.vert.glsl", gl::GLenum::GL_VERTEX_SHADER),
-           std::make_shared<GLShader>(glContext, "shaders/forward_pass/forward_pass.frag.glsl", gl::GLenum::GL_FRAGMENT_SHADER)}),
-      frameUniformsBuffer(glContext), objectMatricesBuffer(glContext), pointLights(3), pointLightBuffer(glContext)
+      shaderProgram(glContext, {std::make_shared<GLShader>(glContext, "shaders/forward_pass/forward_pass.vert.glsl",
+                                                           gl::GLenum::GL_VERTEX_SHADER),
+                                std::make_shared<GLShader>(glContext, "shaders/forward_pass/forward_pass.frag.glsl",
+                                                           gl::GLenum::GL_FRAGMENT_SHADER)}),
+      frameUniformsBuffer(glContext), objectMatricesBuffer(glContext), pointLights(1), pointLightBuffer(glContext)
 {
         PROFILE_FUNCTION();
 
@@ -176,14 +176,8 @@ void SimpleRenderer::render()
                 objectMatrices.modelMatrix = glm::mat4(1.0);
                 objectMatrices.normalMatrix = glm::transpose(glm::inverse(glm::mat3(objectMatrices.modelMatrix)));
 
-                pointLights[0].colour = glm::vec4(0.0f, 1.0f, 0.0f, 0.0f);
-                pointLights[0].position = glm::vec4(glm::sin(timer.getElapsedTimeSeconds()), 2.0f, 0.0f, 0.0f);
-
-                pointLights[1].colour = glm::vec4(1.0f, 0.0f, 0.0f, 0.0f);
-                pointLights[1].position = glm::vec4(0.0f, 2.0f, glm::sin(timer.getElapsedTimeSeconds()), 0.0f);
-
-                pointLights[2].colour = glm::vec4(0.0f, 0.0f, 1.0f, 0.0f);
-                pointLights[2].position = glm::vec4(0.0f, glm::sin(timer.getElapsedTimeSeconds()), 2.0f, 0.0f);
+                pointLights[0].colour = glm::vec4(20.0f, 20.0f, 20.0f, 0.0f);
+                pointLights[0].position = glm::vec4(0.0f, 2.0f, 1.0f, 0.0f);
 
                 frameUniformsBuffer.subData<FrameUniforms>(0, std::span(&frameUniforms, 1));
                 objectMatricesBuffer.subData<ObjectMatrices>(0, std::span(&objectMatrices, 1));

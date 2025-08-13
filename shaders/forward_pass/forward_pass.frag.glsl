@@ -7,17 +7,17 @@
 
 in VS_OUT
 {
-    vec3 worldPos;
-    vec3 normal;
-    vec3 viewPos;
-    vec2 texCoords;
+	vec3 worldPos;
+	vec3 normal;
+	vec3 viewPos;
+	vec2 texCoords;
 } fs_in;
 
 out vec4 vFragColour;
 
 void main()
 {
-    vec4 baseColour = uBaseColour.factor;
+	vec4 baseColour = uBaseColour.factor;
 	if (uBaseColour.isTextureEnabled)
 	{
 		baseColour *= texture(uBaseColour.textureMap, fs_in.texCoords);
@@ -44,39 +44,39 @@ void main()
 		normalVector = normalize(getTBN(fs_in.worldPos, fs_in.normal, fs_in.texCoords) * scaledNormal);
 	}
 
-    const vec3 viewVector = normalize(uCameraPosition - fs_in.worldPos);
+	const vec3 viewVector = normalize(uCameraPosition - fs_in.worldPos);
 
-    vec3 Lo = vec3(0.0);
+	vec3 Lo = vec3(0.0);
 
-    for (int i = 0; i < uNumPointLights; i++)
-    {
-        Lo += calculateLightContribution(
-            vec3(1.0, 1.0, 1.0),
-            1.0,
-            0.0,
-            normalVector,
-            viewVector,
-            fs_in.worldPos,
-            normalize(bPointLights[i].position.xyz - fs_in.worldPos),
-            attenuatePointLight(bPointLights[i].position.xyz, bPointLights[i].radiance.rgb, fs_in.worldPos)
-        );
-    }
+	for (int i = 0; i < uNumPointLights; i++)
+	{
+		Lo += calculateLightContribution(
+				baseColour.rgb,
+				roughness,
+				metalMask,
+				normalVector,
+				viewVector,
+				fs_in.worldPos,
+				normalize(bPointLights[i].position.xyz - fs_in.worldPos),
+				attenuatePointLight(bPointLights[i].position.xyz, bPointLights[i].radiance.rgb, fs_in.worldPos)
+				);
+	}
 
-    for (int i = 0; i < uNumDirectionalLights; i++)
-    {
-        Lo += calculateLightContribution(
-            baseColour.rgb,
-            roughness,
-            metalMask,
-            normalVector,
-            viewVector,
-            fs_in.worldPos,
-            bDirectionalLights[i].direction.xyz,
-            bDirectionalLights[i].radiance.rgb
-        );
-    }
+	for (int i = 0; i < uNumDirectionalLights; i++)
+	{
+		Lo += calculateLightContribution(
+				baseColour.rgb,
+				roughness,
+				metalMask,
+				normalVector,
+				viewVector,
+				fs_in.worldPos,
+				bDirectionalLights[i].direction.xyz,
+				bDirectionalLights[i].radiance.rgb
+				);
+	}
 
-    if (uOcclusionMap.isTextureEnabled)
+	if (uOcclusionMap.isTextureEnabled)
 	{
 		Lo = mix(Lo, Lo * texture(uOcclusionMap.textureMap, fs_in.texCoords).r, uOcclusionMap.factor.r);
 	}

@@ -16,9 +16,9 @@
 #include "imgui_context.h"
 #endif
 
-#include "orbit_camera.h"
 #include "input_handler.h"
 #include "opengl_context.h"
+#include "orbit_camera.h"
 #include "profiler.h"
 #include "raw_data.h"
 #include "simple_renderer.h"
@@ -41,78 +41,80 @@ int main()
         static const uint32_t initRegionId = Profiler::RegisterRegion("initialization", __FILE__, __LINE__);
         Profiler::BeginRegion(initRegionId);
 #endif
-        try {
-            GLFWContext glfwContext;
+        try
+        {
+                GLFWContext glfwContext;
 
-            WindowFlags flags;
-            flags.startMaximized = true;
-            flags.resizable = true;
+                WindowFlags flags;
+                flags.startMaximized = true;
+                flags.resizable = true;
 
-            Window window(glfwContext, 800, 600, "-- graphics_engine --", flags);
+                Window window(glfwContext, 800, 600, "-- graphics_engine --", flags);
 
-            GLContext glContext(window);
-
-#ifndef NDEBUG
-            EngineImGuiContext imguiContext(window, timer);
-#endif
-
-            InputHandler input(window);
-            input.defineAction("orbit", {}, { GLFW_MOUSE_BUTTON_1 });
-            input.defineAction("zoom", {}, { GLFW_MOUSE_BUTTON_2 });
-
-            OrbitCamera orbitCamera(glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f), 1.0f, 0.001f);
-
-            RawScene scene;
-            scene.addFile("../opengl/models/bunny.obj");
-
-            SimpleRenderer renderer(glContext, scene, orbitCamera, timer);
+                GLContext glContext(window);
 
 #ifndef NDEBUG
-            Profiler::EndRegion();
-
-            imguiContext.getProfiler().updateInitEvents(Profiler::GetCurrentFrameEvents());
+                EngineImGuiContext imguiContext(window, timer);
 #endif
 
-            while (!window.shouldClose())
-            {
-                Profiler::EndFrame();
+                InputHandler input(window);
+                input.defineAction("orbit", {}, {GLFW_MOUSE_BUTTON_1});
+                input.defineAction("zoom", {}, {GLFW_MOUSE_BUTTON_2});
 
-                PROFILE_SCOPE("frame");
+                OrbitCamera orbitCamera(glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f), 1.0f, 0.001f);
 
-                timer.update();
+                RawScene scene;
+                scene.addFile("../opengl/models/bunny.glb");
+
+                SimpleRenderer renderer(glContext, scene, orbitCamera, timer);
 
 #ifndef NDEBUG
-                if (!ImGui::GetIO().WantCaptureKeyboard && !ImGui::GetIO().WantCaptureMouse) {
-#endif
-                    input.pollInputs();
-#ifndef NDEBUG
-                }
+                Profiler::EndRegion();
+
+                imguiContext.getProfiler().updateInitEvents(Profiler::GetCurrentFrameEvents());
 #endif
 
-                if (input.getAction("orbit"))
+                while (!window.shouldClose())
                 {
-                    const glm::vec2 mouseOffset = input.getMouseOffset();
+                        Profiler::EndFrame();
 
-                    orbitCamera.rotateAzimuth(mouseOffset.x * std::numbers::pi * 2.0f);
-                    orbitCamera.rotatePolar(mouseOffset.y * std::numbers::pi * 2.0f);
-                }
-                else if (input.getAction("zoom"))
-                {
-                    const glm::vec2 mouseOffset = input.getMouseOffset();
+                        PROFILE_SCOPE("frame");
 
-                    orbitCamera.zoom(mouseOffset.y * 10.0f);
-                }
-
-                glfwContext.pollEvents();
-
-                renderer.render();
+                        timer.update();
 
 #ifndef NDEBUG
-                imguiContext.draw();
+                        if (!ImGui::GetIO().WantCaptureKeyboard && !ImGui::GetIO().WantCaptureMouse)
+                        {
+#endif
+                                input.pollInputs();
+#ifndef NDEBUG
+                        }
 #endif
 
-                window.swapBuffers();
-            }
+                        if (input.getAction("orbit"))
+                        {
+                                const glm::vec2 mouseOffset = input.getMouseOffset();
+
+                                orbitCamera.rotateAzimuth(mouseOffset.x * std::numbers::pi * 2.0f);
+                                orbitCamera.rotatePolar(mouseOffset.y * std::numbers::pi * 2.0f);
+                        }
+                        else if (input.getAction("zoom"))
+                        {
+                                const glm::vec2 mouseOffset = input.getMouseOffset();
+
+                                orbitCamera.zoom(mouseOffset.y * 10.0f);
+                        }
+
+                        glfwContext.pollEvents();
+
+                        renderer.render();
+
+#ifndef NDEBUG
+                        imguiContext.draw();
+#endif
+
+                        window.swapBuffers();
+                }
         }
         catch (const std::exception& e)
         {
