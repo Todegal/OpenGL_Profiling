@@ -1,0 +1,9 @@
+BasedOnStyle: Microsoft
+IndentWidth: 8
+AllowShortBlocksOnASingleLine: true
+AllowShortIfStatementsOnASingleLine: true
+BreakTemplateDeclarations: Yes
+
+Language: Cpp
+SortIncludes: true
+PointerAlignment: Left
