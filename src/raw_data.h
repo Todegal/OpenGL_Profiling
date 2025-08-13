@@ -144,13 +144,24 @@ class RawMaterial
         RawMaterial(const aiMaterial* material, aiTexture** textures, const std::filesystem::path& rootDir = "");
         ~RawMaterial() = default;
 
+        bool hasAlbedoTexture() const
+        {
+                return (albedoTexture != nullptr);
+        }
+
         const std::unique_ptr<RawTexture>& getAlbedoTexture() const
         {
                 return albedoTexture;
         }
 
+        const glm::vec3& getAlbedoFactor() const
+        {
+                return albedoFactor;
+        }
+
       private:
         std::unique_ptr<RawTexture> albedoTexture;
+        glm::vec3 albedoFactor;
 };
 
 // So this is the container class

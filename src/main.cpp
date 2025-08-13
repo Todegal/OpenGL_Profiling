@@ -32,7 +32,7 @@ int main()
         Timer timer;
 
 #ifndef NDEBUG
-        spdlog::set_level(spdlog::level::info);
+        spdlog::set_level(spdlog::level::trace);
 #endif
         spdlog::set_pattern("[%n] [%^%l%$] %v"); // logger name, colored level, message
         spdlog::set_default_logger(spdlog::stdout_color_mt("graphics_engine"));
@@ -60,10 +60,10 @@ int main()
             input.defineAction("orbit", {}, { GLFW_MOUSE_BUTTON_1 });
             input.defineAction("zoom", {}, { GLFW_MOUSE_BUTTON_2 });
 
-            OrbitCamera orbitCamera(glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f), 100.0f, 0.001f);
+            OrbitCamera orbitCamera(glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f), 1.0f, 0.001f);
 
             RawScene scene;
-            scene.addFile("C:/Users/Niall Townley/Documents/Source/Viper/Models/Sponza/glTF/Sponza.gltf");
+            scene.addFile("../opengl/models/bunny.obj");
 
             SimpleRenderer renderer(glContext, scene, orbitCamera, timer);
 

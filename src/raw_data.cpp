@@ -1,5 +1,6 @@
 #include "raw_data.h"
 
+#include <assimp/color4.h>
 #include <cstring>
 #include <limits>
 #include <memory>
@@ -24,7 +25,7 @@ void RawScene::addFile(const std::filesystem::path& filePath)
 {
         PROFILE_FUNCTION();
 
-        std::filesystem::path parentDir = std::filesystem::absolute(filePath).parent_path();
+        std::filesystem::path parentDir = filePath.parent_path();
 
         Assimp::Importer importer;
 
@@ -134,7 +135,8 @@ RawTexture::RawTexture(const aiTexture* texture)
                 if (!data)
                 {
                         const char* failureReason = stbi_failure_reason();
-                        throw std::runtime_error(std::format("Failed to load texture from memory: {}, error: {}", filename, failureReason));
+                        throw std::runtime_error(
+                            std::format("Failed to load texture from memory: {}, error: {}", filename, failureReason));
                 }
 
                 width = x;
@@ -194,7 +196,7 @@ RawMaterial::RawMaterial(const aiMaterial* material, aiTexture** textures, const
         PROFILE_FUNCTION();
 
         aiString albedoTexturePath;
-        material->GetTexture(aiTextureType_BASE_COLOR, 0, &albedoTexturePath);
+        material->GetTexture(aiTextureType_DIFFUSE, 0, &albedoTexturePath);
 
         if (albedoTexturePath.C_Str()[0] == '*')
         {
@@ -207,5 +209,10 @@ RawMaterial::RawMaterial(const aiMaterial* material, aiTexture** textures, const
         {
                 albedoTexture = std::make_unique<RawTexture>(albedoTexturePath.C_Str(), rootDir);
         }
-        else { throw std::runtime_error("Cannot create material without albedo texture!"); }
+        else { albedoTexture = nullptr; }
+
+        aiColor3D baseColour(0.f, 0.f, 0.f);
+        material->Get(AI_MATKEY_COLOR_DIFFUSE, baseColour);
+
+        albedoFactor = glm::vec3(baseColour.r, baseColour.g, baseColour.b);
 }

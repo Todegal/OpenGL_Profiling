@@ -7,6 +7,8 @@ layout(std140) uniform RenderUniforms
 };
 
 uniform sampler2D uAlbedoTexture;
+uniform bool uAlbedoTextureEnabled;
+uniform vec3 uAlbedoFactor;
 
 struct Light
 {
@@ -34,7 +36,7 @@ void main()
 	
 	const float ambientFactor = 0.15;
 
-	const vec3 baseColour = texture(uAlbedoTexture, fs_in.texCoords).rgb;
+	const vec3 baseColour = (uAlbedoTextureEnabled) ? texture(uAlbedoTexture, fs_in.texCoords).rgb : uAlbedoFactor;
 
 	vec3 Lo = vec3(0.0);
 	for (int i = 0; i < uNumLights; i++)

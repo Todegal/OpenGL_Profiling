@@ -1,39 +1,58 @@
 #include "opengl_shader.h"
 
+#include "profiler.h"
 #include <glbinding/gl/boolean.h>
 #include <glbinding/gl/enum.h>
 
 #include <spdlog/spdlog.h>
 
-// #define STB_INCLUDE_IMPLEMENTATION
-// #define STB_INCLUDE_LINE_GLSL
-//
-// #include <stb_include.h>
-//
-// #undef STB_INCLUDE_IMPLEMENTATION
+#define STB_INCLUDE_IMPLEMENTATION
+#define STB_INCLUDE_LINE_GLSL
+
+#include <stb_include.h>
+
+#undef STB_INCLUDE_IMPLEMENTATION
 
 #include <filesystem>
 #include <format>
-#include <fstream>
+// #include <fstream>
 
 GLShader::GLShader(const GLContext&, const std::string_view shaderPath, const gl::GLenum stage)
     : absoluteShaderPath(std::filesystem::absolute(shaderPath)), stage(stage)
 {
+	PROFILE_FUNCTION();
+
         shaderId = gl::glCreateShader(stage);
 
+	absoluteShaderPath = std::filesystem::absolute(shaderPath);
         if (!std::filesystem::exists(absoluteShaderPath))
         {
                 throw std::runtime_error(std::format("Failed to load shader: {}", shaderPath));
         }
 
-        const std::ifstream fileStream(absoluteShaderPath.string());
-        std::stringstream stringStream;
-        stringStream << fileStream.rdbuf();
 
-        const std::string sourceString = stringStream.str();
-        const char* sourcePointer = sourceString.c_str();
+	const std::string fileString = absoluteShaderPath.string();
+	const std::string dirString = absoluteShaderPath.parent_path().string();
+
+        // const std::ifstream fileStream(absoluteShaderPath.string());
+        // std::stringstream stringStream;
+        // stringStream << fileStream.rdbuf();
+        //
+        // const std::string sourceString = stringStream.str();
+	char* filepath = const_cast<char*>(fileString.c_str());
+	char* dirpath = const_cast<char*>(dirString.c_str());
+
+	char errorBuf[256];
+        char* sourcePointer = stb_include_file(filepath, nullptr, dirpath, errorBuf);
+
+	if (!sourcePointer)
+	{
+		throw std::runtime_error(std::format("Failed to load shader: {}, stb_include_file error: {}", shaderPath, errorBuf));
+	}
 
         gl::glShaderSource(shaderId, 1, &sourcePointer, nullptr);
+
+	free(sourcePointer);
 
         gl::glCompileShader(shaderId);
 
@@ -70,6 +89,8 @@ GLShader::~GLShader()
 
 GLShaderProgram::GLShaderProgram(const GLContext&, const std::vector<std::shared_ptr<GLShader>> shaders)
 {
+	PROFILE_FUNCTION();
+
         programId = gl::glCreateProgram();
 
         for (const auto& shader : shaders)
