@@ -55,6 +55,7 @@ GLContext::GLContext(const Window& window) : windowRef(window)
         PROFILE_FUNCTION();
 
         glfwMakeContextCurrent(window.getWindowPtr().get());
+        glfwSwapInterval(0);
 
         glbinding::initialize(glfwGetProcAddress);
 

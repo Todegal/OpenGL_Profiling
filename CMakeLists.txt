@@ -51,6 +51,12 @@ list(APPEND include
 
 add_executable(graphics_engine ${source} ${include})
 
+if (MSVC)
+	add_compile_options(-Wall -Wextra -Werror -fdiagnostics-color=always)
+else()
+	add_compile_options(/W4 /WX)
+endif()
+
 set_property(TARGET graphics_engine PROPERTY CXX_STANDARD 20)
 
 find_package(Stb REQUIRED)

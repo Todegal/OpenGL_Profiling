@@ -21,7 +21,7 @@ class EngineImGuiContext
 
       private:
         bool showMetrics;
-	bool showProfiler;
+	    bool showProfiler;
 
         float frametime;
 	ImGuiProfileVisualiser profiler;

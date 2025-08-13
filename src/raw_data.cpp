@@ -30,7 +30,7 @@ void RawScene::addFile(const std::filesystem::path& filePath)
 
         const aiScene* scene = importer.ReadFile(
             std::filesystem::absolute(filePath).string(),
-            aiProcess_CalcTangentSpace | aiProcess_EmbedTextures | aiProcess_GenSmoothNormals |
+            aiProcess_CalcTangentSpace | /*aiProcess_EmbedTextures |*/ aiProcess_GenSmoothNormals |
                 aiProcess_JoinIdenticalVertices | aiProcess_ImproveCacheLocality | aiProcess_LimitBoneWeights |
                 aiProcess_RemoveRedundantMaterials | aiProcess_SplitLargeMeshes | aiProcess_Triangulate |
                 aiProcess_GenUVCoords | aiProcess_SortByPType | aiProcess_FindDegenerates | aiProcess_FindInvalidData);
@@ -133,7 +133,8 @@ RawTexture::RawTexture(const aiTexture* texture)
 
                 if (!data)
                 {
-                        throw std::runtime_error(std::format("Failed to load texture from memory: {}", filename));
+                        const char* failureReason = stbi_failure_reason();
+                        throw std::runtime_error(std::format("Failed to load texture from memory: {}, error: {}", filename, failureReason));
                 }
 
                 width = x;

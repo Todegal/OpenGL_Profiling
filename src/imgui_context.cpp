@@ -7,7 +7,7 @@
 #include "profiler.h"
 #include "timer.h"
 
-EngineImGuiContext::EngineImGuiContext(const Window& window, Timer<>& timer) : profiler()
+EngineImGuiContext::EngineImGuiContext(const Window& window, Timer<>& timer) : showMetrics(false), showProfiler(false), profiler()
 {
         PROFILE_FUNCTION();
 

@@ -167,7 +167,7 @@ void SimpleRenderer::render()
 
                 matrixUniforms.projectionMatrix = glm::perspective(
                     glm::radians(camera.getFov()),
-                    static_cast<float>(screenDimensions.x) / static_cast<float>(screenDimensions.y), 0.01f, 1000.0f);
+                    static_cast<float>(screenDimensions.x) / static_cast<float>(screenDimensions.y), 0.01f, 100000.0f);
 
                 matrixUniforms.viewMatrix = camera.getViewMatrix();
 
@@ -198,8 +198,7 @@ void SimpleRenderer::render()
 
         for (const auto& m : meshes)
         {
-                gl::glActiveTexture(gl::GLenum::GL_TEXTURE0);
-                gl::glBindTexture(gl::GLenum::GL_TEXTURE_2D, m->albedoTexture);
+                gl::glBindTextureUnit(0, m->albedoTexture);
 
                 m->vao.bind();
 
