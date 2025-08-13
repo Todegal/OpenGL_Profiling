@@ -109,7 +109,39 @@ SimpleRenderer::SimpleRenderer(GLContext& glContext, const RawScene& scene, cons
                         gl::glGenerateMipmap(gl::GLenum::GL_TEXTURE_2D);
                 }
 
-                m->albedoFactor = glm::vec4(materials[mesh->getMaterialIndex()]->getAlbedoFactor(), 1.0f);
+                m->albedoFactor = materials[mesh->getMaterialIndex()]->getAlbedoFactor();
+
+                const std::unique_ptr<RawTexture>& metallicRoughness =
+                    materials[mesh->getMaterialIndex()]->getMetallicRoughnessTexture();
+                if (metallicRoughness)
+                {
+                        gl::GLenum format;
+                        switch (metallicRoughness->getChannels())
+                        {
+                        case 1:
+                                format = gl::GLenum::GL_R;
+                                break;
+                        case 2:
+                                format = gl::GLenum::GL_RG;
+                                break;
+                        case 3:
+                                format = gl::GLenum::GL_RGB;
+                                break;
+                        default:
+                                format = gl::GLenum::GL_RGBA;
+                                break;
+                        }
+
+                        gl::glGenTextures(1, &m->metallicRoughnessTexture);
+                        gl::glBindTexture(gl::GLenum::GL_TEXTURE_2D, m->metallicRoughnessTexture);
+                        gl::glTexImage2D(gl::GLenum::GL_TEXTURE_2D, 0, gl::GLenum::GL_RGBA,
+                                         metallicRoughness->getWidth(), metallicRoughness->getHeight(), 0, format,
+                                         gl::GLenum::GL_UNSIGNED_BYTE, metallicRoughness->getData().data());
+
+                        gl::glGenerateMipmap(gl::GLenum::GL_TEXTURE_2D);
+                }
+
+                m->metallicRoughnessFactor = materials[mesh->getMaterialIndex()]->getAlbedoFactor();
         }
 
         // NOW, let's create the uniform buffers
@@ -173,7 +205,7 @@ void SimpleRenderer::render()
 
                 // matrixUniforms.modelMatrix =
                 //     glm::rotate(glm::mat4(1.0), timer.getElapsedTimeSeconds(), glm::vec3(0, 1, 0));
-                objectMatrices.modelMatrix = glm::mat4(1.0);
+                objectMatrices.modelMatrix = glm::scale(glm::mat4(1.0f), glm::vec3(1.0f));
                 objectMatrices.normalMatrix = glm::transpose(glm::inverse(glm::mat3(objectMatrices.modelMatrix)));
 
                 pointLights[0].colour = glm::vec4(20.0f, 20.0f, 20.0f, 0.0f);
@@ -203,6 +235,22 @@ void SimpleRenderer::render()
 
                 gl::glUniform4fv(gl::glGetUniformLocation(shaderProgram.getProgramId(), "uBaseColour.factor"), 1,
                                  glm::value_ptr(m->albedoFactor));
+
+                if (m->metallicRoughnessTexture)
+                {
+                        gl::glBindTextureUnit(1, m->metallicRoughnessTexture);
+
+                        const gl::GLint mrLoc =
+                            gl::glGetUniformLocation(shaderProgram.getProgramId(), "uMetallicRoughness.textureMap");
+                        gl::glUniform1i(mrLoc, 1);
+
+                        gl::glUniform1i(
+                            gl::glGetUniformLocation(shaderProgram.getProgramId(), "uMetallicRoughness.isTextureEnabled"),
+                            true);
+                }
+
+                gl::glUniform4fv(gl::glGetUniformLocation(shaderProgram.getProgramId(), "uMetallicRoughness.factor"), 1,
+                                 glm::value_ptr(m->metallicRoughnessFactor));
 
                 m->vao.bind();
 

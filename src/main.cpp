@@ -64,7 +64,7 @@ int main()
                 OrbitCamera orbitCamera(glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f), 1.0f, 0.001f);
 
                 RawScene scene;
-                scene.addFile("../opengl/models/bunny.glb");
+                scene.addFile("test_models/San_Miguel/san-miguel-low-poly.obj");
 
                 SimpleRenderer renderer(glContext, scene, orbitCamera, timer);
 

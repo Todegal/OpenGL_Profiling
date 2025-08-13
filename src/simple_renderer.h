@@ -31,7 +31,7 @@ class SimpleRenderer
         struct Mesh
         {
                 Mesh() = delete;
-                Mesh(const GLContext& c) : vbo(c), ebo(c), vao(c), albedoTexture(0)
+                Mesh(const GLContext& c) : vbo(c), ebo(c), vao(c), albedoTexture(0), metallicRoughnessTexture(0)
                 {
                 }
 
@@ -42,7 +42,10 @@ class SimpleRenderer
                 uint32_t vertexCount;
 
                 gl::GLuint albedoTexture;
-		glm::vec4 albedoFactor;
+                glm::vec4 albedoFactor;
+
+                gl::GLuint metallicRoughnessTexture;
+                glm::vec4 metallicRoughnessFactor;
         };
 
         std::vector<std::shared_ptr<Mesh>> meshes;
@@ -51,15 +54,15 @@ class SimpleRenderer
 
         struct FrameUniforms
         {
-		glm::mat4 projectionMatrix;
-		glm::mat4 viewMatrix;
-		glm::vec3 cameraPosition;
-		float p0;
-		glm::vec4 cascadePlanes;
-		float shadowNearPlane;
-		float shadowFarPlane;
+                glm::mat4 projectionMatrix;
+                glm::mat4 viewMatrix;
+                glm::vec3 cameraPosition;
+                float p0;
+                glm::vec4 cascadePlanes;
+                float shadowNearPlane;
+                float shadowFarPlane;
                 int numPointLights;
-		int numDirectionalLights;
+                int numDirectionalLights;
         } frameUniforms;
 
         GLBuffer frameUniformsBuffer;

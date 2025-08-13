@@ -69,8 +69,6 @@ class GLBuffer
         GLBuffer() = delete;
         GLBuffer(const GLContext&) : allocatedSize(0)
         {
-		PROFILE_FUNCTION();
-
                 gl::glCreateBuffers(1, &bufferID);
                 spdlog::trace("Created Buffer: {}", bufferID);
         }
@@ -169,8 +167,6 @@ class GLVertexArray
         GLVertexArray() = delete;
         GLVertexArray(const GLContext&)
         {
-		PROFILE_FUNCTION();
-
                 gl::glGenVertexArrays(1, &vaoID);
                 spdlog::trace("Created VAO: {}", vaoID);
         }

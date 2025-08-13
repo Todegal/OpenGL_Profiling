@@ -5,6 +5,7 @@
 #include <assimp/texture.h>
 #include <glm/vec2.hpp>
 #include <glm/vec3.hpp>
+#include <glm/vec4.hpp>
 
 #include <filesystem>
 #include <span>
@@ -144,6 +145,8 @@ class RawMaterial
         RawMaterial(const aiMaterial* material, aiTexture** textures, const std::filesystem::path& rootDir = "");
         ~RawMaterial() = default;
 
+        // ALBEDO
+
         bool hasAlbedoTexture() const
         {
                 return (albedoTexture != nullptr);
@@ -154,14 +157,34 @@ class RawMaterial
                 return albedoTexture;
         }
 
-        const glm::vec3& getAlbedoFactor() const
+        const glm::vec4& getAlbedoFactor() const
         {
                 return albedoFactor;
         }
 
+        // METALLIC ROUGHNESS
+
+        bool hasMetallicRoughnessTexture() const
+        {
+                return (metallicRoughnessTexture != nullptr);
+        }
+
+        const std::unique_ptr<RawTexture>& getMetallicRoughnessTexture() const
+        {
+                return metallicRoughnessTexture;
+        }
+
+        const glm::vec4& getMetallicRoughnessFactor() const
+        {
+                return metallicRoughnessFactor;
+        }
+
       private:
         std::unique_ptr<RawTexture> albedoTexture;
-        glm::vec3 albedoFactor;
+        glm::vec4 albedoFactor;
+
+        std::unique_ptr<RawTexture> metallicRoughnessTexture;
+        glm::vec4 metallicRoughnessFactor;
 };
 
 // So this is the container class
@@ -172,7 +195,7 @@ class RawMaterial
 class RawScene
 {
       public:
-        RawScene() = default;
+        RawScene();
         ~RawScene() = default;
 
         void addFile(const std::filesystem::path& filePath);

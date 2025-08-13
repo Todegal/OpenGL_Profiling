@@ -21,6 +21,11 @@
 
 #include <filesystem>
 
+RawScene::RawScene()
+{
+        stbi_set_flip_vertically_on_load(true);
+}
+
 void RawScene::addFile(const std::filesystem::path& filePath)
 {
         PROFILE_FUNCTION();
@@ -128,7 +133,6 @@ RawTexture::RawTexture(const aiTexture* texture)
         if (texture->mHeight == 0)
         {
                 int x, y, comp;
-                stbi_set_flip_vertically_on_load(true);
                 uint8_t* data = stbi_load_from_memory(reinterpret_cast<stbi_uc*>(texture->pcData), texture->mWidth, &x,
                                                       &y, &comp, 0);
 
@@ -196,7 +200,7 @@ RawMaterial::RawMaterial(const aiMaterial* material, aiTexture** textures, const
         PROFILE_FUNCTION();
 
         aiString albedoTexturePath;
-        material->GetTexture(aiTextureType_DIFFUSE, 0, &albedoTexturePath);
+        material->GetTexture(aiTextureType_BASE_COLOR, 0, &albedoTexturePath);
 
         if (albedoTexturePath.C_Str()[0] == '*')
         {
@@ -212,7 +216,29 @@ RawMaterial::RawMaterial(const aiMaterial* material, aiTexture** textures, const
         else { albedoTexture = nullptr; }
 
         aiColor3D baseColour(0.f, 0.f, 0.f);
-        material->Get(AI_MATKEY_COLOR_DIFFUSE, baseColour);
+        material->Get(AI_MATKEY_BASE_COLOR, baseColour);
 
-        albedoFactor = glm::vec3(baseColour.r, baseColour.g, baseColour.b);
+        albedoFactor = glm::vec4(baseColour.r, baseColour.g, baseColour.b, 1.0f);
+
+        aiString metallicRoughnessPath;
+        material->GetTexture(aiTextureType_BASE_COLOR, 0, &metallicRoughnessPath);
+
+        if (metallicRoughnessPath.C_Str()[0] == '*')
+        {
+                int index = std::atoi(metallicRoughnessPath.C_Str() + 1);
+                const aiTexture* texture = textures[index];
+
+                metallicRoughnessTexture = std::make_unique<RawTexture>(texture);
+        }
+        else if (!metallicRoughnessPath.Empty())
+        {
+                metallicRoughnessTexture = std::make_unique<RawTexture>(metallicRoughnessPath.C_Str(), rootDir);
+        }
+        else { metallicRoughnessTexture = nullptr; }
+
+        ai_real metallicFactor, roughnessFactor;
+        material->Get(AI_MATKEY_METALLIC_FACTOR, metallicFactor);
+        material->Get(AI_MATKEY_ROUGHNESS_FACTOR, roughnessFactor);
+
+        metallicRoughnessFactor = glm::vec4(0.0f, roughnessFactor, metallicFactor, 0.0f);
 }
