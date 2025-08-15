@@ -1,5 +1,6 @@
 #include <glbinding/gl/bitfield.h>
 
+#include <glbinding/gl/functions.h>
 #define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
 
@@ -49,7 +50,7 @@ int main()
                 flags.startMaximized = true;
                 flags.resizable = true;
 
-                Window window(glfwContext, 800, 600, "-- graphics_engine --", flags);
+                Window window(glfwContext, 1280, 720, "-- graphics_engine --", flags);
 
                 GLContext glContext(window);
 
@@ -64,7 +65,7 @@ int main()
                 OrbitCamera orbitCamera(glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f), 1.0f, 0.001f);
 
                 RawScene scene;
-                scene.addFile("test_models/San_Miguel/san-miguel-low-poly.obj");
+                scene.addFile("test_models/camera/Camera_01_4k.gltf");
 
                 SimpleRenderer renderer(glContext, scene, orbitCamera, timer);
 

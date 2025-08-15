@@ -46,7 +46,7 @@ Window::Window(const GLFWContext&, int startWidth, int startHeight, std::string 
         windowPtr = GLFWUniqueWindowPtr(glfwCreateWindow(startWidth, startHeight, title.c_str(), nullptr, nullptr),
                                         windowDeleter);
 
-        if (flags.startMaximized) { glfwMaximizeWindow(windowPtr.get()); }
+        // if (flags.startMaximized) { glfwMaximizeWindow(windowPtr.get()); }
 
         if (windowPtr == nullptr)
         {

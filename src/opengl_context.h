@@ -4,6 +4,8 @@
 #include <glbinding/AbstractFunction.h>
 #include <glbinding/CallbackMask.h>
 #include <glbinding/FunctionCall.h>
+#include <glbinding/gl/bitfield.h>
+#include <glbinding/gl/boolean.h>
 #include <glbinding/glbinding.h>
 
 #include <glbinding-aux/ContextInfo.h>
@@ -87,7 +89,7 @@ class GLBuffer
         GLBuffer& operator=(const GLBuffer&) = delete;
 
         GLBuffer(GLBuffer&& other) = delete;
-        GLBuffer& operator=(const GLBuffer&&) = delete;
+        GLBuffer& operator=(GLBuffer&&) = delete;
 
         template <gl::GLenum target>
         void bind()
@@ -135,8 +137,7 @@ class GLBuffer
                 static_assert(std::is_trivially_copyable<T>::value, "Buffer data must be copyable!");
                 if (offset + (data.size() * sizeof(T)) > allocatedSize)
                 {
-                        throw std::runtime_error(
-                            "Cannot sub data into an undersized buffer! Use 'bufferData' instead!");
+                        throw std::runtime_error("Cannot sub data into an undersized buffer!");
                 }
 
                 gl::glNamedBufferSubData(bufferID, offset, static_cast<gl::GLsizeiptr>(data.size() * sizeof(T)),
@@ -159,6 +160,8 @@ class GLBuffer
       private:
         size_t allocatedSize;
         gl::GLuint bufferID;
+
+        friend class GLVertexArray;
 };
 
 class GLVertexArray
@@ -167,7 +170,7 @@ class GLVertexArray
         GLVertexArray() = delete;
         GLVertexArray(const GLContext&)
         {
-                gl::glGenVertexArrays(1, &vaoID);
+                gl::glCreateVertexArrays(1, &vaoID);
                 spdlog::trace("Created VAO: {}", vaoID);
         }
 
@@ -183,9 +186,27 @@ class GLVertexArray
         GLVertexArray(GLVertexArray&& other) = delete;
         GLVertexArray& operator=(const GLVertexArray&&) = delete;
 
-        void bind()
+	void bind() 
+	{
+		gl::glBindVertexArray(vaoID);
+	}
+
+        void bindVertexBuffer(gl::GLuint bindingIndex, const GLBuffer& buffer, gl::GLintptr offset, gl::GLsizei stride)
         {
-                gl::glBindVertexArray(vaoID);
+                gl::glVertexArrayVertexBuffer(vaoID, bindingIndex, buffer.bufferID, offset, stride);
+        }
+
+        void bindElementBuffer(const GLBuffer& buffer)
+        {
+                gl::glVertexArrayElementBuffer(vaoID, buffer.bufferID);
+        }
+
+        void defineAttribute(gl::GLuint attribIndex, gl::GLuint bindingIndex, gl::GLint size, gl::GLenum type,
+                             gl::GLboolean normalized, gl::GLuint relativeOffset)
+        {
+		gl::glEnableVertexArrayAttrib(vaoID, attribIndex);
+                gl::glVertexArrayAttribFormat(vaoID, attribIndex, size, type, normalized, relativeOffset);
+                gl::glVertexArrayAttribBinding(vaoID, attribIndex, bindingIndex);
         }
 
       private:

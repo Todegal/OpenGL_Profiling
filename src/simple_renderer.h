@@ -30,16 +30,12 @@ class SimpleRenderer
 
         struct Mesh
         {
-                Mesh() = delete;
-                Mesh(const GLContext& c) : vbo(c), ebo(c), vao(c), albedoTexture(0), metallicRoughnessTexture(0)
+                Mesh() : offset(0), count(0), albedoTexture(0), metallicRoughnessTexture(0)
                 {
                 }
 
-                GLBuffer vbo;
-                GLBuffer ebo;
-                GLVertexArray vao;
-
-                uint32_t vertexCount;
+                size_t offset;
+                size_t count;
 
                 gl::GLuint albedoTexture;
                 glm::vec4 albedoFactor;
@@ -48,7 +44,11 @@ class SimpleRenderer
                 glm::vec4 metallicRoughnessFactor;
         };
 
-        std::vector<std::shared_ptr<Mesh>> meshes;
+        std::vector<Mesh> meshes;
+
+	GLBuffer sceneVertexBuffer;
+	GLVertexArray sceneVertexArray;
+	size_t indicesStart;
 
         GLShaderProgram shaderProgram;
 
