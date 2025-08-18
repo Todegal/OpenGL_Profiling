@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.21)
+cmake_minimum_required(VERSION 4.1)
 
 project(graphics_engine LANGUAGES C CXX)
 
@@ -47,6 +47,7 @@ list(APPEND include
 	src/profiler.h
 	src/imgui_profile_visualiser.h
 	src/simple_renderer.h
+	src/mem_print.h
 )
 
 add_executable(graphics_engine ${source} ${include})
@@ -62,7 +63,7 @@ set_property(TARGET graphics_engine PROPERTY CXX_STANDARD 20)
 find_package(Stb REQUIRED)
 target_include_directories(graphics_engine PRIVATE ${Stb_INCLUDE_DIR})
 
-find_package(glfw3 CONFIG REQUIRED)
+find_package(glfw3 3.4 REQUIRED)
 find_package(glbinding CONFIG REQUIRED)
 find_package(assimp CONFIG REQUIRED)
 find_package(glm CONFIG REQUIRED)

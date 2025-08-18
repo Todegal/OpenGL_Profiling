@@ -3,6 +3,7 @@
     "assimp",
     "glbinding",
     "glfw3",
+    "glm",
     {
       "name": "imgui",
       "features": [
@@ -12,7 +13,6 @@
       ]
     },
     "spdlog",
-    "stb",
-    "glm"
+    "stb"
   ]
 }

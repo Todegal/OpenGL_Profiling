@@ -38,7 +38,7 @@ Window::Window(const GLFWContext&, int startWidth, int startHeight, std::string 
         glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
         glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
 
-        if (!flags.resizable) { glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE); }
+        // if (!flags.resizable) { glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE); }
 
         glfwWindowHint(GLFW_SRGB_CAPABLE, GLFW_TRUE);
 

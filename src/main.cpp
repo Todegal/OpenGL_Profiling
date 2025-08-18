@@ -33,7 +33,7 @@ int main()
         Timer timer;
 
 #ifndef NDEBUG
-        spdlog::set_level(spdlog::level::trace);
+        spdlog::set_level(spdlog::level::debug);
 #endif
         spdlog::set_pattern("[%n] [%^%l%$] %v"); // logger name, colored level, message
         spdlog::set_default_logger(spdlog::stdout_color_mt("graphics_engine"));
@@ -61,19 +61,27 @@ int main()
                 InputHandler input(window);
                 input.defineAction("orbit", {}, {GLFW_MOUSE_BUTTON_1});
                 input.defineAction("zoom", {}, {GLFW_MOUSE_BUTTON_2});
+                input.defineAction("pan", {GLFW_KEY_LEFT_SHIFT});
 
-                OrbitCamera orbitCamera(glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f), 1.0f, 0.001f);
+                OrbitCamera orbitCamera(glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f), 1.0f, 0.01f);
 
-                RawScene scene;
-                scene.addFile("test_models/camera/Camera_01_4k.gltf");
+                std::unique_ptr<SimpleRenderer> renderer;
 
-                SimpleRenderer renderer(glContext, scene, orbitCamera, timer);
+                {
+                        RawScene scene;
+                        scene.addFile("test_models/Sponza/glTF/Sponza.gltf");
+
+                        renderer = std::make_unique<SimpleRenderer>(glContext, scene, orbitCamera, timer);
+                }
 
 #ifndef NDEBUG
                 Profiler::EndRegion();
 
                 imguiContext.getProfiler().updateInitEvents(Profiler::GetCurrentFrameEvents());
 #endif
+
+                /*timer.addFixedIntervalFunction<std::chrono::seconds>(
+                    [&]() { spdlog::debug("current camera position: {}", glm::to_string(orbitCamera.getEye())); });*/
 
                 while (!window.shouldClose())
                 {
@@ -96,8 +104,16 @@ int main()
                         {
                                 const glm::vec2 mouseOffset = input.getMouseOffset();
 
-                                orbitCamera.rotateAzimuth(mouseOffset.x * std::numbers::pi * 2.0f);
-                                orbitCamera.rotatePolar(mouseOffset.y * std::numbers::pi * 2.0f);
+                                if (input.getAction("pan"))
+                                {
+                                        orbitCamera.moveHorizontal(-mouseOffset.x * 10.0f);
+                                        orbitCamera.moveVertical(mouseOffset.y * 10.0f);
+                                }
+                                else
+                                {
+                                        orbitCamera.rotateAzimuth(mouseOffset.x * std::numbers::pi * 2.0f);
+                                        orbitCamera.rotatePolar(mouseOffset.y * std::numbers::pi * 2.0f);
+                                }
                         }
                         else if (input.getAction("zoom"))
                         {
@@ -108,7 +124,7 @@ int main()
 
                         glfwContext.pollEvents();
 
-                        renderer.render();
+                        renderer->render();
 
 #ifndef NDEBUG
                         imguiContext.draw();

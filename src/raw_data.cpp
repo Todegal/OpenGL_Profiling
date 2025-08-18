@@ -36,9 +36,9 @@ void RawScene::addFile(const std::filesystem::path& filePath)
 
         const aiScene* scene = importer.ReadFile(
             std::filesystem::absolute(filePath).string(),
-            aiProcess_CalcTangentSpace | /*aiProcess_EmbedTextures |*/ aiProcess_GenSmoothNormals |
-                aiProcess_JoinIdenticalVertices | aiProcess_ImproveCacheLocality | aiProcess_LimitBoneWeights |
-                aiProcess_RemoveRedundantMaterials | aiProcess_SplitLargeMeshes | aiProcess_Triangulate |
+            aiProcess_CalcTangentSpace | aiProcess_EmbedTextures | /*aiProcess_GenSmoothNormals |*/
+                aiProcess_JoinIdenticalVertices | /*aiProcess_ImproveCacheLocality |*/ aiProcess_LimitBoneWeights |
+                aiProcess_RemoveRedundantMaterials | /*aiProcess_SplitLargeMeshes |*/ aiProcess_Triangulate |
                 aiProcess_GenUVCoords | aiProcess_SortByPType | aiProcess_FindDegenerates | aiProcess_FindInvalidData);
 
         if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE)
@@ -156,13 +156,15 @@ RawTexture::RawTexture(const aiTexture* texture)
                 height = texture->mHeight;
                 channels = 4;
 
-                size_t size = width * height * channels;
+                size_t size = width * height * sizeof(aiTexel);
                 dataPointer = std::shared_ptr<uint8_t[]>(new uint8_t[size]);
 
                 std::memcpy(dataPointer.get(), texture->pcData, size);
 
-                dataSpan = std::span<const uint8_t>(dataPointer.get(), width * height * channels);
+                dataSpan = std::span<const uint8_t>(dataPointer.get(), width * height * sizeof(aiTexel));
         }
+
+        if (width == 0 || height == 0) { throw std::runtime_error("Invalid texture format!"); }
 
         spdlog::trace("Loaded embedded texture: {}", filename);
 }

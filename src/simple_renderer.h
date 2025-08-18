@@ -30,12 +30,27 @@ class SimpleRenderer
 
         struct Mesh
         {
-                Mesh() : offset(0), count(0), albedoTexture(0), metallicRoughnessTexture(0)
+                Mesh() : indicesOffset(0), indicesCount(0), vertexOffset(0), vertexCount(0), materialIdx(0)
                 {
                 }
 
-                size_t offset;
-                size_t count;
+                size_t indicesOffset;
+                size_t indicesCount;
+
+                size_t vertexOffset;
+                size_t vertexCount;
+
+                size_t materialIdx;
+        };
+
+        std::vector<Mesh> meshes;
+
+        struct Material
+        {
+                Material()
+                    : albedoTexture(0), albedoFactor(0.0f), metallicRoughnessTexture(0), metallicRoughnessFactor(0.0f)
+                {
+                }
 
                 gl::GLuint albedoTexture;
                 glm::vec4 albedoFactor;
@@ -44,11 +59,11 @@ class SimpleRenderer
                 glm::vec4 metallicRoughnessFactor;
         };
 
-        std::vector<Mesh> meshes;
+        std::vector<Material> materials;
 
-	GLBuffer sceneVertexBuffer;
-	GLVertexArray sceneVertexArray;
-	size_t indicesStart;
+        std::unique_ptr<GLImmutableBuffer> sceneVertexBuffer;
+        GLVertexArray sceneVertexArray;
+        size_t indicesStart;
 
         GLShaderProgram shaderProgram;
 
@@ -65,7 +80,7 @@ class SimpleRenderer
                 int numDirectionalLights;
         } frameUniforms;
 
-        GLBuffer frameUniformsBuffer;
+        std::unique_ptr<GLMutableBuffer> frameUniformsBuffer;
 
         struct ObjectMatrices
         {
@@ -73,7 +88,7 @@ class SimpleRenderer
                 glm::mat3x4 normalMatrix;
         } objectMatrices;
 
-        GLBuffer objectMatricesBuffer;
+        std::unique_ptr<GLMutableBuffer> objectMatricesBuffer;
 
         struct PointLight
         {
@@ -82,5 +97,5 @@ class SimpleRenderer
         };
 
         std::vector<PointLight> pointLights;
-        GLBuffer pointLightBuffer;
+        std::unique_ptr<GLMutableBuffer> pointLightBuffer;
 };
