@@ -1,8 +1,8 @@
 {
   "dependencies": [
+    "glfw3",
     "assimp",
     "glbinding",
-    "glfw3",
     "glm",
     {
       "name": "imgui",

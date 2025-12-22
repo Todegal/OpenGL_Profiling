@@ -113,7 +113,7 @@ class GLMutableBuffer : public GLBuffer
                 spdlog::trace("Created mutable buffer: {}, with {} bytes", bufferID, allocatedSizeBytes);
         }
 
-        GLMutableBuffer(const GLContext&, size_t sizeBytes, gl::GLenum usage)
+        GLMutableBuffer(const GLContext&, std::size_t sizeBytes, gl::GLenum usage)
         {
                 allocatedSizeBytes = sizeBytes;
 
@@ -211,13 +211,13 @@ class GLImmutableBuffer : public GLBuffer
                 spdlog::trace("Created mutable buffer: {}, with {} bytes", bufferID, allocatedSizeBytes);
         }
 
-        GLImmutableBuffer(const GLContext&, size_t sizeBytes, gl::BufferStorageMask accessFlags)
+        GLImmutableBuffer(const GLContext&, size_t sizeBytes, gl::BufferStorageMask storageMask)
         {
                 allocatedSizeBytes = sizeBytes;
 
                 gl::glCreateBuffers(1, &bufferID);
                 gl::glNamedBufferStorage(bufferID, static_cast<gl::GLsizeiptr>(allocatedSizeBytes), nullptr,
-                                         accessFlags);
+                                         storageMask);
 
                 spdlog::trace("Created mutable buffer: {}, with {} bytes", bufferID, allocatedSizeBytes);
         }

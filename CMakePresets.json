@@ -8,18 +8,13 @@
 	"configurePresets": [
 		{
 			"name": "auto",
-			"generator": "Ninja",
 			"binaryDir": "${sourceDir}/out",
-			"environment": {
-				"CXX": "clang",
-				"CC": "clang"
-			},
 			"cacheVariables": {
 				"CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
 				"CMAKE_BUILD_TYPE": "Debug",
 				"CMAKE_COLOR_DIAGNOSTICS": "ON"
 			},
-      			"toolchainFile": "$env{VCPKG_INSTALL_ROOT}/scripts/buildsystems/vcpkg.cmake"
+      			"toolchainFile": "./vcpkg/scripts/buildsystems/vcpkg.cmake"
 		},
 		{
 			"name": "release",

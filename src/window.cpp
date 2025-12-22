@@ -36,23 +36,22 @@ Window::Window(const GLFWContext&, int startWidth, int startHeight, std::string 
         PROFILE_FUNCTION();
 
         glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
 
-        // if (!flags.resizable) { glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE); }
+        if (!flags.resizable) { glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE); }
 
         glfwWindowHint(GLFW_SRGB_CAPABLE, GLFW_TRUE);
 
         GLFWwindow_Deleter windowDeleter;
         windowPtr = GLFWUniqueWindowPtr(glfwCreateWindow(startWidth, startHeight, title.c_str(), nullptr, nullptr),
                                         windowDeleter);
-
-        // if (flags.startMaximized) { glfwMaximizeWindow(windowPtr.get()); }
-
         if (windowPtr == nullptr)
         {
                 glfwTerminate();
                 throw std::runtime_error("Failed to create window!");
         }
+
+        if (flags.startMaximized) { glfwMaximizeWindow(windowPtr.get()); }
 }
 
 Window::~Window()

@@ -6,6 +6,8 @@
 #include "raw_data.h"
 #include "timer.h"
 
+#include <glbinding/gl/bitfield.h>
+#include <glbinding/gl/enum.h>
 // Loads models from the scene and renders them statically, with simple albedo textures
 // and with blinn-phong shading
 class SimpleRenderer
@@ -30,40 +32,25 @@ class SimpleRenderer
 
         struct Mesh
         {
-                Mesh() : indicesOffset(0), indicesCount(0), vertexOffset(0), vertexCount(0), materialIdx(0)
+                Mesh(const GLContext& context) : vao(context)
                 {
                 }
 
-                size_t indicesOffset;
-                size_t indicesCount;
+                std::unique_ptr<GLImmutableBuffer> vbo;
+                std::unique_ptr<GLImmutableBuffer> ebo;
+                GLVertexArray vao;
 
-                size_t vertexOffset;
-                size_t vertexCount;
-
-                size_t materialIdx;
-        };
-
-        std::vector<Mesh> meshes;
-
-        struct Material
-        {
-                Material()
-                    : albedoTexture(0), albedoFactor(0.0f), metallicRoughnessTexture(0), metallicRoughnessFactor(0.0f)
-                {
-                }
+		std::uint32_t vertexCount;
 
                 gl::GLuint albedoTexture;
                 glm::vec4 albedoFactor;
 
                 gl::GLuint metallicRoughnessTexture;
                 glm::vec4 metallicRoughnessFactor;
+
         };
 
-        std::vector<Material> materials;
-
-        std::unique_ptr<GLImmutableBuffer> sceneVertexBuffer;
-        GLVertexArray sceneVertexArray;
-        size_t indicesStart;
+        std::vector<std::shared_ptr<Mesh>> meshes;
 
         GLShaderProgram shaderProgram;
 
@@ -80,7 +67,7 @@ class SimpleRenderer
                 int numDirectionalLights;
         } frameUniforms;
 
-        std::unique_ptr<GLMutableBuffer> frameUniformsBuffer;
+        std::unique_ptr<GLImmutableBuffer> frameUniformsBuffer;
 
         struct ObjectMatrices
         {
@@ -88,7 +75,7 @@ class SimpleRenderer
                 glm::mat3x4 normalMatrix;
         } objectMatrices;
 
-        std::unique_ptr<GLMutableBuffer> objectMatricesBuffer;
+        std::unique_ptr<GLImmutableBuffer> objectMatricesBuffer;
 
         struct PointLight
         {

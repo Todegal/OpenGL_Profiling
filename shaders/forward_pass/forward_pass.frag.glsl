@@ -1,4 +1,4 @@
-#version 460
+#version 450
 
 #include "../uniforms_common.glsl"
 #include "../fragment_common.glsl"

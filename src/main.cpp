@@ -26,6 +26,7 @@
 #include "timer.h"
 #include "window.h"
 
+#include <iostream>
 #include <numbers>
 
 int main()
@@ -33,7 +34,7 @@ int main()
         Timer timer;
 
 #ifndef NDEBUG
-        spdlog::set_level(spdlog::level::debug);
+        spdlog::set_level(spdlog::level::trace);
 #endif
         spdlog::set_pattern("[%n] [%^%l%$] %v"); // logger name, colored level, message
         spdlog::set_default_logger(spdlog::stdout_color_mt("graphics_engine"));
@@ -47,8 +48,8 @@ int main()
                 GLFWContext glfwContext;
 
                 WindowFlags flags;
-                flags.startMaximized = true;
-                flags.resizable = true;
+                flags.startMaximized = false;
+                flags.resizable = false;
 
                 Window window(glfwContext, 1280, 720, "-- graphics_engine --", flags);
 
@@ -69,7 +70,7 @@ int main()
 
                 {
                         RawScene scene;
-                        scene.addFile("test_models/Sponza/glTF/Sponza.gltf");
+                        scene.addFile("test_models/camera/Camera_01_4k.gltf");
 
                         renderer = std::make_unique<SimpleRenderer>(glContext, scene, orbitCamera, timer);
                 }
