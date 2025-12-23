@@ -59,10 +59,10 @@ class SimpleRenderer
                 glm::mat4 projectionMatrix;
                 glm::mat4 viewMatrix;
                 glm::vec3 cameraPosition;
-                float p0;
-                glm::vec4 cascadePlanes;
-                float shadowNearPlane;
-                float shadowFarPlane;
+                // float p0;
+                // glm::vec4 cascadePlanes;
+                // float shadowNearPlane;
+                // float shadowFarPlane;
                 int numPointLights;
                 int numDirectionalLights;
         } frameUniforms;

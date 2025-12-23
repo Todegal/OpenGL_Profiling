@@ -1,9 +1,11 @@
 #include "opengl_context.h"
 
+#include <glbinding/gl/functions-patches.h>
 #include <glbinding/gl/functions.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>
 
+#include "mem_print.h"
 #include "profiler.h"
 
 static const auto openglLogger = spdlog::stdout_color_mt("OpenGL");
@@ -59,9 +61,8 @@ GLContext::GLContext(const Window& window) : windowRef(window)
         glbinding::initialize(glfwGetProcAddress);
 
 #ifndef NDEBUG
-        glbinding::setCallbackMaskExcept(glbinding::CallbackMask::After |
-                                             glbinding::CallbackMask::ParametersAndReturnValue,
-                                         {"glGetError"});
+        glbinding::setCallbackMaskExcept(
+            glbinding::CallbackMask::After | glbinding::CallbackMask::ParametersAndReturnValue, {"glGetError"});
 
         glbinding::setAfterCallback(debugLogCallback);
 #endif
@@ -73,6 +74,18 @@ GLContext::GLContext(const Window& window) : windowRef(window)
         spdlog::info("Vendor: {}", glbinding::aux::ContextInfo::vendor());
         spdlog::info("GLSL Version: {}",
                      reinterpret_cast<const char*>(gl::glGetString(gl::GLenum::GL_SHADING_LANGUAGE_VERSION)));
+
+        gl::GLint maxUniformBlockSize{};
+        gl::glGetIntegerv(gl::GLenum::GL_MAX_UNIFORM_BLOCK_SIZE, &maxUniformBlockSize);
+
+        spdlog::info("Max Uniform Block Size: {}", humanReadableSize(maxUniformBlockSize));
+
+        gl::GLint maxNumVertexUniformBlocks{}, maxNumFragmentUniformBlocks{};
+        gl::glGetIntegerv(gl::GLenum::GL_MAX_VERTEX_UNIFORM_BLOCKS, &maxNumVertexUniformBlocks);
+        gl::glGetIntegerv(gl::GLenum::GL_MAX_VERTEX_UNIFORM_BLOCKS, &maxNumFragmentUniformBlocks);
+
+        spdlog::info("Max Num Uniform Blocks (vertex/fragment): {}/{}", maxNumVertexUniformBlocks,
+                     maxNumFragmentUniformBlocks);
 
 #ifndef NDEBUG
         gl::glEnable(gl::GLenum::GL_DEBUG_OUTPUT);
@@ -86,8 +99,8 @@ GLContext::GLContext(const Window& window) : windowRef(window)
         enable(gl::GLenum::GL_CULL_FACE);
         gl::glCullFace(gl::GLenum::GL_BACK);
 
-	    gl::glPixelStorei(gl::GLenum::GL_UNPACK_ALIGNMENT, 1);
-	    gl::glPixelStorei(gl::GLenum::GL_UNPACK_ALIGNMENT, 1);
+        gl::glPixelStorei(gl::GLenum::GL_UNPACK_ALIGNMENT, 1);
+        gl::glPixelStorei(gl::GLenum::GL_UNPACK_ALIGNMENT, 1);
 
         enable(gl::GLenum::GL_MULTISAMPLE);
 }

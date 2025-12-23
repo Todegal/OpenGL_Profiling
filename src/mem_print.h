@@ -1,5 +1,6 @@
 #pragma once
 
+#include <format>
 #include <string>
 
 std::string humanReadableSize(const size_t sizeBytes)
