@@ -1,11 +1,13 @@
 #pragma once
 
+#include <glbinding/gl/functions.h>
 #include <glbinding/gl/types.h>
 
 #include <glm/mat4x4.hpp>
 #include <glm/vec3.hpp>
 
 #include <filesystem>
+#include <unordered_set>
 
 #include "opengl_context.h"
 
@@ -19,11 +21,6 @@ class GLShader
 
         GLShader(const GLShader&) = delete;
         GLShader& operator=(const GLShader&) = delete;
-
-        gl::GLuint getId() const
-        {
-                return shaderId;
-        }
 
         gl::GLenum getStage() const
         {
@@ -39,6 +36,8 @@ class GLShader
         gl::GLuint shaderId;
         std::filesystem::path absoluteShaderPath;
         gl::GLenum stage;
+
+	friend class GLShaderProgram;
 };
 
 class GLShaderProgram
@@ -53,11 +52,23 @@ class GLShaderProgram
         GLShaderProgram(GLShaderProgram&&) = delete;
         GLShaderProgram& operator=(GLShaderProgram&&) = delete;
 
-        gl::GLuint getProgramId() const
+        void setUniformValue(const std::string& name, const glm::vec4& value);
+        void setUniformValue(const std::string& name, const int value);
+
+        void setUniformBlockBinding(const std::string& name, const gl::GLuint binding);
+        void setShaderStorageBlockBinding(const std::string& name, const gl::GLuint binding);
+
+        void useProgram()
         {
-                return programId;
+                gl::glUseProgram(programId);
         }
 
       private:
         gl::GLuint programId;
+
+	std::unordered_set<std::string> uniformVariableNames;
+	std::unordered_set<std::string> uniformBlockNames;
+	std::unordered_set<std::string> shaderStorageBlockNames;
+
+	std::unordered_set<std::string> getResourceNames(gl::GLenum resourceInterface);
 };

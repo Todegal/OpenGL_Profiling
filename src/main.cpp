@@ -26,7 +26,6 @@
 #include "timer.h"
 #include "window.h"
 
-#include <iostream>
 #include <numbers>
 
 int main()
@@ -40,7 +39,7 @@ int main()
         spdlog::set_default_logger(spdlog::stdout_color_mt("graphics_engine"));
 
 #ifndef NDEBUG
-        static const uint32_t initRegionId = Profiler::RegisterRegion("initialization", __FILE__, __LINE__);
+        static const std::uint32_t initRegionId = Profiler::RegisterRegion("initialization", __FILE__, __LINE__);
         Profiler::BeginRegion(initRegionId);
 #endif
         try
@@ -49,7 +48,7 @@ int main()
 
                 WindowFlags flags;
                 flags.startMaximized = false;
-                flags.resizable = false;
+                flags.resizable = true;
 
                 Window window(glfwContext, 1280, 720, "-- graphics_engine --", flags);
 
@@ -80,9 +79,6 @@ int main()
 
                 imguiContext.getProfiler().updateInitEvents(Profiler::GetCurrentFrameEvents());
 #endif
-
-                /*timer.addFixedIntervalFunction<std::chrono::seconds>(
-                    [&]() { spdlog::debug("current camera position: {}", glm::to_string(orbitCamera.getEye())); });*/
 
                 while (!window.shouldClose())
                 {

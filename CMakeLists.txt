@@ -50,14 +50,15 @@ list(APPEND include
 	src/mem_print.h
 )
 
-add_compile_options(-Wall -Wextra -Werror)
+if (MSVC)
+	add_compile_options(/W4 /WX)
+else()
+	add_compile_options(-pedantic -Wall -Wextra -Werror -fdiagnostics-color=always)
+endif()
 
 add_executable(graphics_engine ${source} ${include})
 
-# if (MSVC)
-# else()
-# 	add_compile_options(/W4 /WX)
-# endif()
+
 
 set_property(TARGET graphics_engine PROPERTY CXX_STANDARD 20)
 

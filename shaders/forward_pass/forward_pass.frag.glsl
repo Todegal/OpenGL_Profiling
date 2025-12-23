@@ -104,8 +104,5 @@ void main()
 		Lo = mix(Lo, Lo * texture(uOcclusionMap.textureMap, fs_in.texCoords).r, uOcclusionMap.factor.r);
 	}
 
-	const vec3 tonemapped = ACESFilm(Lo);
-	const vec3 SRGB = fromLinear(tonemapped);
-
-	vFragColour = vec4(SRGB, baseColour.a);
+	vFragColour = vec4(Lo, baseColour.a);
 }

@@ -13,7 +13,6 @@
 #include "profiler.h"
 
 #include <array>
-#include <cstddef>
 
 SimpleRenderer::SimpleRenderer(GLContext& glContext, const RawScene& scene, const Camera& camera, const Timer<>& timer)
     : glContext(glContext), timer(timer), camera(camera),
@@ -109,13 +108,17 @@ SimpleRenderer::SimpleRenderer(GLContext& glContext, const RawScene& scene, cons
                                 break;
                         }
 
-                        gl::glGenTextures(1, &m->albedoTexture);
-                        gl::glBindTexture(gl::GLenum::GL_TEXTURE_2D, m->albedoTexture);
-                        gl::glTexImage2D(gl::GLenum::GL_TEXTURE_2D, 0, gl::GLenum::GL_RGBA, albedo->getWidth(),
-                                         albedo->getHeight(), 0, format, gl::GLenum::GL_UNSIGNED_BYTE,
-                                         albedo->getData().data());
+                        gl::glCreateTextures(gl::GLenum::GL_TEXTURE_2D, 1, &m->albedoTexture);
+                        // gl::glTexImage2D(gl::GLenum::GL_TEXTURE_2D, 0, gl::GLenum::GL_RGBA, albedo->getWidth(),
+                        //                  albedo->getHeight(), 0, format, gl::GLenum::GL_UNSIGNED_BYTE,
+                        //                  albedo->getData().data());
 
-                        gl::glGenerateMipmap(gl::GLenum::GL_TEXTURE_2D);
+                        gl::glTextureStorage2D(m->albedoTexture, 1, gl::GLenum::GL_RGBA32F, albedo->getWidth(),
+                                               albedo->getHeight());
+                        gl::glTextureSubImage2D(m->albedoTexture, 0, 0, 0, albedo->getWidth(), albedo->getHeight(),
+                                                format, gl::GLenum::GL_UNSIGNED_BYTE, albedo->getData().data());
+
+                        gl::glGenerateTextureMipmap(m->albedoTexture);
                 }
                 else
                 {
@@ -145,13 +148,18 @@ SimpleRenderer::SimpleRenderer(GLContext& glContext, const RawScene& scene, cons
                                 break;
                         }
 
-                        gl::glGenTextures(1, &m->metallicRoughnessTexture);
-                        gl::glBindTexture(gl::GLenum::GL_TEXTURE_2D, m->metallicRoughnessTexture);
-                        gl::glTexImage2D(gl::GLenum::GL_TEXTURE_2D, 0, gl::GLenum::GL_RGBA,
-                                         metallicRoughness->getWidth(), metallicRoughness->getHeight(), 0, format,
-                                         gl::GLenum::GL_UNSIGNED_BYTE, metallicRoughness->getData().data());
+                        gl::glCreateTextures(gl::GLenum::GL_TEXTURE_2D, 1, &m->metallicRoughnessTexture);
+                        // gl::glTexImage2D(gl::GLenum::GL_TEXTURE_2D, 0, gl::GLenum::GL_RGBA,
+                        //                  metallicRoughness->getWidth(), metallicRoughness->getHeight(), 0, format,
+                        //                  gl::GLenum::GL_UNSIGNED_BYTE, metallicRoughness->getData().data());
+                        //
+                        gl::glTextureStorage2D(m->metallicRoughnessTexture, 1, gl::GLenum::GL_RGBA32F,
+                                               metallicRoughness->getWidth(), metallicRoughness->getHeight());
+                        gl::glTextureSubImage2D(m->metallicRoughnessTexture, 0, 0, 0, metallicRoughness->getWidth(),
+                                                metallicRoughness->getHeight(), format, gl::GLenum::GL_UNSIGNED_BYTE,
+                                                metallicRoughness->getData().data());
 
-                        gl::glGenerateMipmap(gl::GLenum::GL_TEXTURE_2D);
+                        gl::glGenerateTextureMipmap(m->metallicRoughnessTexture);
                 }
                 else
                 {
@@ -166,17 +174,13 @@ SimpleRenderer::SimpleRenderer(GLContext& glContext, const RawScene& scene, cons
                 PROFILE_SCOPE("create_render_buffers");
 
                 objectMatricesBuffer->bindBase(gl::GLenum::GL_UNIFORM_BUFFER, 0);
-                gl::GLuint blockIndex = gl::glGetUniformBlockIndex(shaderProgram.getProgramId(), "ObjectBuffer");
-                gl::glUniformBlockBinding(shaderProgram.getProgramId(), blockIndex, 0);
+                shaderProgram.setUniformBlockBinding("ObjectBuffer", 0);
 
                 frameUniformsBuffer->bindBase(gl::GLenum::GL_UNIFORM_BUFFER, 1);
-                blockIndex = gl::glGetUniformBlockIndex(shaderProgram.getProgramId(), "FrameUniformsBuffer");
-                gl::glUniformBlockBinding(shaderProgram.getProgramId(), blockIndex, 1);
+                shaderProgram.setUniformBlockBinding("FrameUniformsBuffer", 1);
 
                 pointLightBuffer->bindBase(gl::GLenum::GL_SHADER_STORAGE_BUFFER, 0);
-                blockIndex = gl::glGetProgramResourceIndex(shaderProgram.getProgramId(),
-                                                           gl::GLenum::GL_SHADER_STORAGE_BLOCK, "PointLightBuffer");
-                gl::glShaderStorageBlockBinding(shaderProgram.getProgramId(), blockIndex, 0);
+                shaderProgram.setShaderStorageBlockBinding("PointLightBuffer", 0);
         }
 }
 
@@ -229,7 +233,7 @@ void SimpleRenderer::render()
                 pointLightBuffer->setData<PointLight>(pointLights, gl::GLenum::GL_STATIC_DRAW);
         }
 
-        gl::glUseProgram(shaderProgram.getProgramId());
+        shaderProgram.useProgram();
 
         for (const auto& m : meshes)
         {
@@ -237,33 +241,21 @@ void SimpleRenderer::render()
                 {
                         gl::glBindTextureUnit(0, m->albedoTexture);
 
-                        const gl::GLint albedoLoc =
-                            gl::glGetUniformLocation(shaderProgram.getProgramId(), "uBaseColour.textureMap");
-                        gl::glUniform1i(albedoLoc, 0);
-
-                        gl::glUniform1i(
-                            gl::glGetUniformLocation(shaderProgram.getProgramId(), "uBaseColour.isTextureEnabled"),
-                            true);
+                        shaderProgram.setUniformValue("uBaseColour.textureMap", 0);
+                        shaderProgram.setUniformValue("uBaseColour.isTextureEnabled", true);
                 }
 
-                gl::glUniform4fv(gl::glGetUniformLocation(shaderProgram.getProgramId(), "uBaseColour.factor"), 1,
-                                 glm::value_ptr(m->albedoFactor));
+                shaderProgram.setUniformValue("uBaseColour.factor", m->albedoFactor);
 
                 if (m->metallicRoughnessTexture)
                 {
                         gl::glBindTextureUnit(1, m->metallicRoughnessTexture);
 
-                        const gl::GLint mrLoc =
-                            gl::glGetUniformLocation(shaderProgram.getProgramId(), "uMetallicRoughness.textureMap");
-                        gl::glUniform1i(mrLoc, 1);
-
-                        gl::glUniform1i(gl::glGetUniformLocation(shaderProgram.getProgramId(),
-                                                                 "uMetallicRoughness.isTextureEnabled"),
-                                        true);
+                        shaderProgram.setUniformValue("uMetallicRoughness.textureMap", 1);
+                        shaderProgram.setUniformValue("uMetallicRoughness.isTextureEnabled", true);
                 }
 
-                gl::glUniform4fv(gl::glGetUniformLocation(shaderProgram.getProgramId(), "uMetallicRoughness.factor"), 1,
-                                 glm::value_ptr(m->metallicRoughnessFactor));
+                shaderProgram.setUniformValue("uMetallicRoughness.factor", m->metallicRoughnessFactor);
 
                 m->vao.bind();
 
