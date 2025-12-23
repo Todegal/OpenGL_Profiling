@@ -49,7 +49,7 @@ int main()
                 WindowFlags flags;
                 flags.startMaximized = false;
                 flags.resizable = true;
-                flags.samples = 4;
+                flags.samples = 0;
 
                 Window window(glfwContext, 1280, 720, "-- graphics_engine --", flags);
 
@@ -109,8 +109,10 @@ int main()
                                 }
                                 else
                                 {
-                                        orbitCamera.rotateAzimuth(mouseOffset.x * static_cast<float>(std::numbers::pi) * 2.0f);
-                                        orbitCamera.rotatePolar(mouseOffset.y * static_cast<float>(std::numbers::pi) * 2.0f);
+                                        orbitCamera.rotateAzimuth(mouseOffset.x * static_cast<float>(std::numbers::pi) *
+                                                                  2.0f);
+                                        orbitCamera.rotatePolar(mouseOffset.y * static_cast<float>(std::numbers::pi) *
+                                                                2.0f);
                                 }
                         }
                         else if (input.getAction("zoom"))
