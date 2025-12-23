@@ -110,10 +110,15 @@ SimpleRenderer::SimpleRenderer(GLContext& glContext, const RawScene& scene, cons
 
                         gl::glCreateTextures(gl::GLenum::GL_TEXTURE_2D, 1, &m->albedoTexture);
 
-                        gl::glTextureStorage2D(m->albedoTexture, 1, gl::GLenum::GL_RGBA32F, albedo->getWidth(),
-                                               albedo->getHeight());
-                        gl::glTextureSubImage2D(m->albedoTexture, 0, 0, 0, albedo->getWidth(), albedo->getHeight(),
-                                                format, gl::GLenum::GL_UNSIGNED_BYTE, albedo->getData().data());
+                        const int levels =
+                            static_cast<int>(std::log2(std::max(albedo->getWidth(), albedo->getHeight()))) - 1;
+
+                        gl::glTextureStorage2D(m->albedoTexture, levels, gl::GLenum::GL_RGBA32F,
+                                               static_cast<gl::GLsizei>(albedo->getWidth()),
+                                               static_cast<gl::GLsizei>(albedo->getHeight()));
+                        gl::glTextureSubImage2D(m->albedoTexture, 0, 0, 0, static_cast<gl::GLsizei>(albedo->getWidth()),
+                                                static_cast<gl::GLsizei>(albedo->getHeight()), format,
+                                                gl::GLenum::GL_UNSIGNED_BYTE, albedo->getData().data());
 
                         gl::glTextureParameteri(m->albedoTexture, gl::GLenum::GL_TEXTURE_MIN_FILTER,
                                                 gl::GLenum::GL_LINEAR_MIPMAP_LINEAR);
@@ -150,7 +155,11 @@ SimpleRenderer::SimpleRenderer(GLContext& glContext, const RawScene& scene, cons
 
                         gl::glCreateTextures(gl::GLenum::GL_TEXTURE_2D, 1, &m->metallicRoughnessTexture);
 
-                        gl::glTextureStorage2D(m->metallicRoughnessTexture, 1, gl::GLenum::GL_RGBA32F,
+                        const int levels = static_cast<int>(std::log2(std::max(metallicRoughness->getWidth(),
+                                                                               metallicRoughness->getHeight()))) -
+                                           1;
+
+                        gl::glTextureStorage2D(m->metallicRoughnessTexture, levels, gl::GLenum::GL_RGBA32F,
                                                static_cast<gl::GLsizei>(metallicRoughness->getWidth()),
                                                static_cast<gl::GLsizei>(metallicRoughness->getHeight()));
                         gl::glTextureSubImage2D(m->metallicRoughnessTexture, 0, 0, 0,
@@ -223,7 +232,7 @@ void SimpleRenderer::render()
 
                 // matrixUniforms.modelMatrix =
                 //     glm::rotate(glm::mat4(1.0), timer.getElapsedTimeSeconds(), glm::vec3(0, 1, 0));
-                objectMatrices.modelMatrix = glm::scale(glm::mat4(1.0f), glm::vec3(1.0f));
+                objectMatrices.modelMatrix = glm::scale(glm::mat4(1.0f), glm::vec3(0.005f));
                 objectMatrices.normalMatrix = glm::transpose(glm::inverse(glm::mat3(objectMatrices.modelMatrix)));
 
                 pointLights[0].colour = glm::vec4(20.0f, 20.0f, 20.0f, 0.0f);

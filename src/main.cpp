@@ -49,7 +49,7 @@ int main()
                 WindowFlags flags;
                 flags.startMaximized = false;
                 flags.resizable = true;
-                flags.samples = 0;
+                flags.samples = 8;
 
                 Window window(glfwContext, 1280, 720, "-- graphics_engine --", flags);
 
@@ -70,7 +70,7 @@ int main()
 
                 {
                         RawScene scene;
-                        scene.addFile("test_models/camera/Camera_01_4k.gltf");
+                        scene.addFile("test_models/Sponza/glTF/Sponza.gltf");
 
                         renderer = std::make_unique<SimpleRenderer>(glContext, scene, orbitCamera, timer);
                 }
