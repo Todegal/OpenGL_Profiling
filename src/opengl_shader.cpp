@@ -113,36 +113,39 @@ GLShaderProgram::GLShaderProgram(const GLContext&, const std::vector<std::shared
 
         if (linkLogLength > 0)
         {
-                std::vector<char> linkLogBuffer(linkLogLength);
+                std::vector<char> linkLogBuffer(static_cast<std::size_t>(linkLogLength));
                 gl::glGetProgramInfoLog(programId, linkLogLength, nullptr, linkLogBuffer.data());
 
                 linkLog = std::string(linkLogBuffer.data());
         }
 
         if (linkStatus != gl::GL_TRUE) { throw std::runtime_error(std::format("Failed to link program: {}", linkLog)); }
-        else { spdlog::trace("Linked program; Log: {}", linkLog); }
+        else
+        {
+                spdlog::trace("Linked program; Log: {}", linkLog);
+        }
 
         uniformVariableNames = getResourceNames(gl::GLenum::GL_UNIFORM);
         uniformBlockNames = getResourceNames(gl::GLenum::GL_UNIFORM_BLOCK);
         shaderStorageBlockNames = getResourceNames(gl::GLenum::GL_SHADER_STORAGE_BLOCK);
 
-        spdlog::debug("Program Uniform Variables:");
-        for (const auto& name : uniformVariableNames)
-        {
-                spdlog::debug("\t{}", name);
-        }
-
-        spdlog::debug("Program Uniform Blocks:");
-        for (const auto& name : uniformBlockNames)
-        {
-                spdlog::debug("\t{}", name);
-        }
-
-        spdlog::debug("Program Shader Storage Blocks:");
-        for (const auto& name : shaderStorageBlockNames)
-        {
-                spdlog::debug("\t{}", name);
-        }
+        // spdlog::debug("Program Uniform Variables:");
+        // for (const auto& name : uniformVariableNames)
+        // {
+        //         spdlog::debug("\t{}", name);
+        // }
+        //
+        // spdlog::debug("Program Uniform Blocks:");
+        // for (const auto& name : uniformBlockNames)
+        // {
+        //         spdlog::debug("\t{}", name);
+        // }
+        //
+        // spdlog::debug("Program Shader Storage Blocks:");
+        // for (const auto& name : shaderStorageBlockNames)
+        // {
+        //         spdlog::debug("\t{}", name);
+        // }
 }
 
 GLShaderProgram::~GLShaderProgram()
@@ -200,13 +203,13 @@ std::unordered_set<std::string> GLShaderProgram::getResourceNames(gl::GLenum res
         gl::GLint numResources{};
         gl::glGetProgramInterfaceiv(programId, resourceInterface, gl::GLenum::GL_ACTIVE_RESOURCES, &numResources);
 
-        names.reserve(numResources);
+        names.reserve(static_cast<std::size_t>(numResources));
 
         gl::GLint maxNameLength{};
         gl::glGetProgramInterfaceiv(programId, resourceInterface, gl::GLenum::GL_MAX_NAME_LENGTH, &maxNameLength);
 
-        std::vector<gl::GLchar> nameBuffer(maxNameLength);
-        for (gl::GLint i = 0; i < numResources; ++i)
+        std::vector<gl::GLchar> nameBuffer(static_cast<std::size_t>(maxNameLength));
+        for (gl::GLuint i = 0; i < static_cast<gl::GLuint>(numResources); ++i)
         {
                 gl::GLsizei actualLength{};
                 gl::glGetProgramResourceName(programId, resourceInterface, i,

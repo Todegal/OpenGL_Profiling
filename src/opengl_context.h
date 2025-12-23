@@ -78,7 +78,7 @@ class GLBuffer
         GLBuffer& operator=(GLBuffer&&) = delete;
 
         virtual void bind(gl::GLenum target) = 0;
-        virtual void bindBase(gl::GLenum target, int base) = 0;
+        virtual void bindBase(gl::GLenum target, gl::GLuint base) = 0;
 
         gl::GLuint getID() const
         {
@@ -143,7 +143,7 @@ class GLMutableBuffer : public GLBuffer
                 glBindBuffer(target, bufferID);
         }
 
-        virtual void bindBase(gl::GLenum target, int base) override
+        virtual void bindBase(gl::GLenum target, gl::GLuint base) override
         {
                 glBindBufferBase(target, base, bufferID);
         }
@@ -242,7 +242,7 @@ class GLImmutableBuffer : public GLBuffer
                 glBindBuffer(target, bufferID);
         }
 
-        virtual void bindBase(gl::GLenum target, int base) override
+        virtual void bindBase(gl::GLenum target, gl::GLuint base) override
         {
                 glBindBufferBase(target, base, bufferID);
         }

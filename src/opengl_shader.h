@@ -37,7 +37,7 @@ class GLShader
         std::filesystem::path absoluteShaderPath;
         gl::GLenum stage;
 
-	friend class GLShaderProgram;
+        friend class GLShaderProgram;
 };
 
 class GLShaderProgram
@@ -63,12 +63,17 @@ class GLShaderProgram
                 gl::glUseProgram(programId);
         }
 
+        gl::GLuint getProgramId() const
+        {
+                return programId;
+        }
+
       private:
         gl::GLuint programId;
 
-	std::unordered_set<std::string> uniformVariableNames;
-	std::unordered_set<std::string> uniformBlockNames;
-	std::unordered_set<std::string> shaderStorageBlockNames;
+        std::unordered_set<std::string> uniformVariableNames;
+        std::unordered_set<std::string> uniformBlockNames;
+        std::unordered_set<std::string> shaderStorageBlockNames;
 
-	std::unordered_set<std::string> getResourceNames(gl::GLenum resourceInterface);
+        std::unordered_set<std::string> getResourceNames(gl::GLenum resourceInterface);
 };

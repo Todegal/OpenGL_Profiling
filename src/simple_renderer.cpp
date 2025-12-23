@@ -120,7 +120,10 @@ SimpleRenderer::SimpleRenderer(GLContext& glContext, const RawScene& scene, cons
 
                         gl::glGenerateTextureMipmap(m->albedoTexture);
                 }
-                else { m->albedoTexture = 0; }
+                else
+                {
+                        m->albedoTexture = 0;
+                }
 
                 m->albedoFactor = materials[mesh->getMaterialIndex()]->getAlbedoFactor();
 
@@ -148,17 +151,22 @@ SimpleRenderer::SimpleRenderer(GLContext& glContext, const RawScene& scene, cons
                         gl::glCreateTextures(gl::GLenum::GL_TEXTURE_2D, 1, &m->metallicRoughnessTexture);
 
                         gl::glTextureStorage2D(m->metallicRoughnessTexture, 1, gl::GLenum::GL_RGBA32F,
-                                               metallicRoughness->getWidth(), metallicRoughness->getHeight());
-                        gl::glTextureSubImage2D(m->metallicRoughnessTexture, 0, 0, 0, metallicRoughness->getWidth(),
-                                                metallicRoughness->getHeight(), format, gl::GLenum::GL_UNSIGNED_BYTE,
-                                                metallicRoughness->getData().data());
+                                               static_cast<gl::GLsizei>(metallicRoughness->getWidth()),
+                                               static_cast<gl::GLsizei>(metallicRoughness->getHeight()));
+                        gl::glTextureSubImage2D(m->metallicRoughnessTexture, 0, 0, 0,
+                                                static_cast<gl::GLsizei>(metallicRoughness->getWidth()),
+                                                static_cast<gl::GLsizei>(metallicRoughness->getHeight()), format,
+                                                gl::GLenum::GL_UNSIGNED_BYTE, metallicRoughness->getData().data());
 
                         gl::glTextureParameteri(m->metallicRoughnessTexture, gl::GLenum::GL_TEXTURE_MIN_FILTER,
                                                 gl::GLenum::GL_LINEAR_MIPMAP_LINEAR);
 
                         gl::glGenerateTextureMipmap(m->metallicRoughnessTexture);
                 }
-                else { m->metallicRoughnessTexture = 0; }
+                else
+                {
+                        m->metallicRoughnessTexture = 0;
+                }
 
                 m->metallicRoughnessFactor = materials[mesh->getMaterialIndex()]->getAlbedoFactor();
         }
@@ -171,7 +179,9 @@ SimpleRenderer::SimpleRenderer(GLContext& glContext, const RawScene& scene, cons
                 shaderProgram.setUniformBlockBinding("ObjectBuffer", 0);
 
                 frameUniformsBuffer->bindBase(gl::GLenum::GL_UNIFORM_BUFFER, 1);
-                shaderProgram.setUniformBlockBinding("FrameUniformsBuffer", 1);
+                // shaderProgram.setUniformBlockBinding("FrameUniformsBuffer", 1);
+                gl::GLuint blockIndex = gl::glGetUniformBlockIndex(shaderProgram.getProgramId(), "FrameUniformsBuffer");
+                gl::glUniformBlockBinding(shaderProgram.getProgramId(), blockIndex, 1);
 
                 pointLightBuffer->bindBase(gl::GLenum::GL_SHADER_STORAGE_BUFFER, 0);
                 shaderProgram.setShaderStorageBlockBinding("PointLightBuffer", 0);
@@ -202,21 +212,18 @@ void SimpleRenderer::render()
 
         // Update uniform buffers
         {
-                // PROFILE_SCOPE("update_uniform_buffers");
+                PROFILE_SCOPE("update_uniform_buffers");
 
                 frameUniforms.projectionMatrix = glm::perspective(
                     glm::radians(camera.getFov()),
                     static_cast<float>(screenDimensions.x) / static_cast<float>(screenDimensions.y), 0.01f, 100000.0f);
-
                 frameUniforms.viewMatrix = camera.getViewMatrix();
-
                 frameUniforms.cameraPosition = camera.getEye();
-
                 frameUniforms.numPointLights = static_cast<int>(pointLights.size());
 
                 // matrixUniforms.modelMatrix =
                 //     glm::rotate(glm::mat4(1.0), timer.getElapsedTimeSeconds(), glm::vec3(0, 1, 0));
-                objectMatrices.modelMatrix = glm::scale(glm::mat4(1.0f), glm::vec3(0.005f));
+                objectMatrices.modelMatrix = glm::scale(glm::mat4(1.0f), glm::vec3(1.0f));
                 objectMatrices.normalMatrix = glm::transpose(glm::inverse(glm::mat3(objectMatrices.modelMatrix)));
 
                 pointLights[0].colour = glm::vec4(20.0f, 20.0f, 20.0f, 0.0f);

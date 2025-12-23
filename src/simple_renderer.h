@@ -8,6 +8,7 @@
 
 #include <glbinding/gl/bitfield.h>
 #include <glbinding/gl/enum.h>
+
 // Loads models from the scene and renders them statically, with simple albedo textures
 // and with blinn-phong shading
 class SimpleRenderer
@@ -40,14 +41,13 @@ class SimpleRenderer
                 std::unique_ptr<GLImmutableBuffer> ebo;
                 GLVertexArray vao;
 
-		        std::size_t vertexCount;
+                std::size_t vertexCount;
 
                 gl::GLuint albedoTexture;
                 glm::vec4 albedoFactor;
 
                 gl::GLuint metallicRoughnessTexture;
                 glm::vec4 metallicRoughnessFactor;
-
         };
 
         std::vector<std::shared_ptr<Mesh>> meshes;
