@@ -80,12 +80,14 @@ GLContext::GLContext(const Window& window) : windowRef(window)
         gl::glDebugMessageCallback(openglErrorCallback, nullptr);
 #endif
 
-        gl::glEnable(gl::GLenum::GL_DEPTH_TEST);
+        enable(gl::GLenum::GL_DEPTH_TEST);
         gl::glDepthFunc(gl::GLenum::GL_LEQUAL);
 
-        //gl::glEnable(gl::GLenum::GL_CULL_FACE);
-        //gl::glCullFace(gl::GLenum::GL_BACK);
+        enable(gl::GLenum::GL_CULL_FACE);
+        gl::glCullFace(gl::GLenum::GL_BACK);
 
-	gl::glPixelStorei(gl::GLenum::GL_UNPACK_ALIGNMENT, 1);
-	gl::glPixelStorei(gl::GLenum::GL_UNPACK_ALIGNMENT, 1);
+	    gl::glPixelStorei(gl::GLenum::GL_UNPACK_ALIGNMENT, 1);
+	    gl::glPixelStorei(gl::GLenum::GL_UNPACK_ALIGNMENT, 1);
+
+        enable(gl::GLenum::GL_MULTISAMPLE);
 }

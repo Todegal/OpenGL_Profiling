@@ -48,13 +48,13 @@ SimpleRenderer::SimpleRenderer(GLContext& glContext, const RawScene& scene, cons
 
                 const std::vector<uint32_t>& indices = mesh->getIndices();
 
-                const gl::GLsizei totalBufferSize = (sizeof(glm::vec3) * positions.size()) +
+                const std::size_t totalBufferSize = (sizeof(glm::vec3) * positions.size()) +
                                                     (sizeof(glm::vec3) * texCoords.size()) +
                                                     (sizeof(glm::vec2) * normals.size());
 
-                const std::array<std::uintptr_t, 3> offsets = {0, sizeof(glm::vec3) * positions.size(),
-                                                               sizeof(glm::vec3) * positions.size() +
-                                                                   sizeof(glm::vec3) * normals.size()};
+                const std::array<std::size_t, 3> offsets = {0, sizeof(glm::vec3) * positions.size(),
+                                                            sizeof(glm::vec3) * positions.size() +
+                                                                sizeof(glm::vec3) * normals.size()};
 
                 // Create mesh and allocate size
                 const std::shared_ptr<Mesh> m = std::make_shared<Mesh>(glContext);
@@ -109,21 +109,18 @@ SimpleRenderer::SimpleRenderer(GLContext& glContext, const RawScene& scene, cons
                         }
 
                         gl::glCreateTextures(gl::GLenum::GL_TEXTURE_2D, 1, &m->albedoTexture);
-                        // gl::glTexImage2D(gl::GLenum::GL_TEXTURE_2D, 0, gl::GLenum::GL_RGBA, albedo->getWidth(),
-                        //                  albedo->getHeight(), 0, format, gl::GLenum::GL_UNSIGNED_BYTE,
-                        //                  albedo->getData().data());
 
                         gl::glTextureStorage2D(m->albedoTexture, 1, gl::GLenum::GL_RGBA32F, albedo->getWidth(),
                                                albedo->getHeight());
                         gl::glTextureSubImage2D(m->albedoTexture, 0, 0, 0, albedo->getWidth(), albedo->getHeight(),
                                                 format, gl::GLenum::GL_UNSIGNED_BYTE, albedo->getData().data());
 
+                        gl::glTextureParameteri(m->albedoTexture, gl::GLenum::GL_TEXTURE_MIN_FILTER,
+                                                gl::GLenum::GL_LINEAR_MIPMAP_LINEAR);
+
                         gl::glGenerateTextureMipmap(m->albedoTexture);
                 }
-                else
-                {
-                        m->albedoTexture = 0;
-                }
+                else { m->albedoTexture = 0; }
 
                 m->albedoFactor = materials[mesh->getMaterialIndex()]->getAlbedoFactor();
 
@@ -149,22 +146,19 @@ SimpleRenderer::SimpleRenderer(GLContext& glContext, const RawScene& scene, cons
                         }
 
                         gl::glCreateTextures(gl::GLenum::GL_TEXTURE_2D, 1, &m->metallicRoughnessTexture);
-                        // gl::glTexImage2D(gl::GLenum::GL_TEXTURE_2D, 0, gl::GLenum::GL_RGBA,
-                        //                  metallicRoughness->getWidth(), metallicRoughness->getHeight(), 0, format,
-                        //                  gl::GLenum::GL_UNSIGNED_BYTE, metallicRoughness->getData().data());
-                        //
+
                         gl::glTextureStorage2D(m->metallicRoughnessTexture, 1, gl::GLenum::GL_RGBA32F,
                                                metallicRoughness->getWidth(), metallicRoughness->getHeight());
                         gl::glTextureSubImage2D(m->metallicRoughnessTexture, 0, 0, 0, metallicRoughness->getWidth(),
                                                 metallicRoughness->getHeight(), format, gl::GLenum::GL_UNSIGNED_BYTE,
                                                 metallicRoughness->getData().data());
 
+                        gl::glTextureParameteri(m->metallicRoughnessTexture, gl::GLenum::GL_TEXTURE_MIN_FILTER,
+                                                gl::GLenum::GL_LINEAR_MIPMAP_LINEAR);
+
                         gl::glGenerateTextureMipmap(m->metallicRoughnessTexture);
                 }
-                else
-                {
-                        m->metallicRoughnessTexture = 0;
-                }
+                else { m->metallicRoughnessTexture = 0; }
 
                 m->metallicRoughnessFactor = materials[mesh->getMaterialIndex()]->getAlbedoFactor();
         }
@@ -218,11 +212,11 @@ void SimpleRenderer::render()
 
                 frameUniforms.cameraPosition = camera.getEye();
 
-                frameUniforms.numPointLights = pointLights.size();
+                frameUniforms.numPointLights = static_cast<int>(pointLights.size());
 
                 // matrixUniforms.modelMatrix =
                 //     glm::rotate(glm::mat4(1.0), timer.getElapsedTimeSeconds(), glm::vec3(0, 1, 0));
-                objectMatrices.modelMatrix = glm::scale(glm::mat4(1.0f), glm::vec3(1.0f));
+                objectMatrices.modelMatrix = glm::scale(glm::mat4(1.0f), glm::vec3(0.005f));
                 objectMatrices.normalMatrix = glm::transpose(glm::inverse(glm::mat3(objectMatrices.modelMatrix)));
 
                 pointLights[0].colour = glm::vec4(20.0f, 20.0f, 20.0f, 0.0f);
@@ -261,6 +255,7 @@ void SimpleRenderer::render()
 
                 m->ebo->bind(gl::GLenum::GL_ELEMENT_ARRAY_BUFFER);
 
-                gl::glDrawElements(gl::GLenum::GL_TRIANGLES, m->vertexCount, gl::GLenum::GL_UNSIGNED_INT, (void*)0);
+                gl::glDrawElements(gl::GLenum::GL_TRIANGLES, static_cast<gl::GLsizei>(m->vertexCount),
+                                   gl::GLenum::GL_UNSIGNED_INT, (void*)0);
         }
 }

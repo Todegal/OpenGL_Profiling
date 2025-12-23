@@ -40,7 +40,7 @@ class SimpleRenderer
                 std::unique_ptr<GLImmutableBuffer> ebo;
                 GLVertexArray vao;
 
-		std::uint32_t vertexCount;
+		        std::size_t vertexCount;
 
                 gl::GLuint albedoTexture;
                 glm::vec4 albedoFactor;

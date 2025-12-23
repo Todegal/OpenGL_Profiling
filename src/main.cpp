@@ -33,9 +33,9 @@ int main()
         Timer timer;
 
 #ifndef NDEBUG
-        spdlog::set_level(spdlog::level::trace);
+        spdlog::set_level(spdlog::level::debug);
 #endif
-        spdlog::set_pattern("[%n] [%^%l%$] %v"); // logger name, colored level, message
+        spdlog::set_pattern("[%H:%M:%S][%n] [%^%l%$] %v"); // logger name, colored level, message
         spdlog::set_default_logger(spdlog::stdout_color_mt("graphics_engine"));
 
 #ifndef NDEBUG
@@ -49,6 +49,7 @@ int main()
                 WindowFlags flags;
                 flags.startMaximized = false;
                 flags.resizable = true;
+                flags.samples = 4;
 
                 Window window(glfwContext, 1280, 720, "-- graphics_engine --", flags);
 
@@ -69,7 +70,7 @@ int main()
 
                 {
                         RawScene scene;
-                        scene.addFile("test_models/camera/Camera_01_4k.gltf");
+                        scene.addFile("test_models/Sponza/glTF/Sponza.gltf");
 
                         renderer = std::make_unique<SimpleRenderer>(glContext, scene, orbitCamera, timer);
                 }
@@ -108,8 +109,8 @@ int main()
                                 }
                                 else
                                 {
-                                        orbitCamera.rotateAzimuth(mouseOffset.x * std::numbers::pi * 2.0f);
-                                        orbitCamera.rotatePolar(mouseOffset.y * std::numbers::pi * 2.0f);
+                                        orbitCamera.rotateAzimuth(mouseOffset.x * static_cast<float>(std::numbers::pi) * 2.0f);
+                                        orbitCamera.rotatePolar(mouseOffset.y * static_cast<float>(std::numbers::pi) * 2.0f);
                                 }
                         }
                         else if (input.getAction("zoom"))

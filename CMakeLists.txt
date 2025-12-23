@@ -51,14 +51,12 @@ list(APPEND include
 )
 
 if (MSVC)
-	add_compile_options(/W4)
+	add_compile_options(/W4 /WX)
 else()
-	add_compile_options(-pedantic -Wall -Wextra -Werror -fdiagnostics-color=always)
+	add_compile_options(-pedantic -Wall -Wextra -Werror -Wconversion -fdiagnostics-color=always)
 endif()
 
 add_executable(graphics_engine ${source} ${include})
-
-
 
 set_property(TARGET graphics_engine PROPERTY CXX_STANDARD 20)
 

@@ -104,5 +104,8 @@ void main()
 		Lo = mix(Lo, Lo * texture(uOcclusionMap.textureMap, fs_in.texCoords).r, uOcclusionMap.factor.r);
 	}
 
-	vFragColour = vec4(Lo, baseColour.a);
+	vec3 colour = ACESFilm(Lo);
+	colour = fromLinear(Lo);
+
+	vFragColour = vec4(colour, baseColour.a);
 }

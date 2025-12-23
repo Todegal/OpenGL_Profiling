@@ -25,6 +25,8 @@ struct WindowFlags
 {
         bool startMaximized = false;
         bool resizable = false;
+
+        std::int8_t samples{};
 };
 
 class Window

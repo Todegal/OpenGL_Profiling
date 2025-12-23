@@ -95,8 +95,6 @@ GLShader::~GLShader()
 
 GLShaderProgram::GLShaderProgram(const GLContext&, const std::vector<std::shared_ptr<GLShader>> shaders)
 {
-        PROFILE_FUNCTION();
-
         programId = gl::glCreateProgram();
 
         for (const auto& shader : shaders)
@@ -122,32 +120,29 @@ GLShaderProgram::GLShaderProgram(const GLContext&, const std::vector<std::shared
         }
 
         if (linkStatus != gl::GL_TRUE) { throw std::runtime_error(std::format("Failed to link program: {}", linkLog)); }
-        else
-        {
-                spdlog::trace("Linked program; Log: {}", linkLog);
-        }
+        else { spdlog::trace("Linked program; Log: {}", linkLog); }
 
         uniformVariableNames = getResourceNames(gl::GLenum::GL_UNIFORM);
         uniformBlockNames = getResourceNames(gl::GLenum::GL_UNIFORM_BLOCK);
         shaderStorageBlockNames = getResourceNames(gl::GLenum::GL_SHADER_STORAGE_BLOCK);
 
-	spdlog::debug("Program Uniform Variables:");
-	for (const auto& name : uniformVariableNames)
-	{
-		spdlog::debug("\t{}", name);
-	}
+        spdlog::debug("Program Uniform Variables:");
+        for (const auto& name : uniformVariableNames)
+        {
+                spdlog::debug("\t{}", name);
+        }
 
-	spdlog::debug("Program Uniform Blocks:");
-	for (const auto& name : uniformBlockNames)
-	{
-		spdlog::debug("\t{}", name);
-	}
-	 
-	spdlog::debug("Program Shader Storage Blocks:");
-	for (const auto& name : shaderStorageBlockNames)
-	{
-		spdlog::debug("\t{}", name);
-	}
+        spdlog::debug("Program Uniform Blocks:");
+        for (const auto& name : uniformBlockNames)
+        {
+                spdlog::debug("\t{}", name);
+        }
+
+        spdlog::debug("Program Shader Storage Blocks:");
+        for (const auto& name : shaderStorageBlockNames)
+        {
+                spdlog::debug("\t{}", name);
+        }
 }
 
 GLShaderProgram::~GLShaderProgram()
@@ -157,11 +152,9 @@ GLShaderProgram::~GLShaderProgram()
 
 void GLShaderProgram::setUniformValue(const std::string& name, const glm::vec4& value)
 {
-	PROFILE_FUNCTION();
-
         if (!uniformVariableNames.contains(name))
         {
-        	throw std::runtime_error(std::format("Uniform {} not found!", name));
+                throw std::runtime_error(std::format("Uniform {} not found!", name));
         }
 
         gl::glUniform4fv(gl::glGetUniformLocation(programId, name.data()), 1, glm::value_ptr(value));
@@ -169,11 +162,9 @@ void GLShaderProgram::setUniformValue(const std::string& name, const glm::vec4& 
 
 void GLShaderProgram::setUniformValue(const std::string& name, const int value)
 {
-	PROFILE_FUNCTION();
-
-               if (!uniformVariableNames.contains(name))
+        if (!uniformVariableNames.contains(name))
         {
-        	throw std::runtime_error(std::format("Uniform {} not found!", name));
+                throw std::runtime_error(std::format("Uniform {} not found!", name));
         }
 
         gl::glUniform1i(gl::glGetUniformLocation(programId, name.data()), value);
@@ -181,11 +172,9 @@ void GLShaderProgram::setUniformValue(const std::string& name, const int value)
 
 void GLShaderProgram::setUniformBlockBinding(const std::string& name, const gl::GLuint binding)
 {
-	PROFILE_FUNCTION();
-
-               if (!uniformBlockNames.contains(name))
+        if (!uniformBlockNames.contains(name))
         {
-        	throw std::runtime_error(std::format("Uniform block {} not found!", name));
+                throw std::runtime_error(std::format("Uniform block {} not found!", name));
         }
 
         gl::GLuint blockIndex = gl::glGetUniformBlockIndex(programId, name.data());
@@ -194,11 +183,9 @@ void GLShaderProgram::setUniformBlockBinding(const std::string& name, const gl::
 
 void GLShaderProgram::setShaderStorageBlockBinding(const std::string& name, const gl::GLuint binding)
 {
-	PROFILE_FUNCTION();
-
-               if (!shaderStorageBlockNames.contains(name))
+        if (!shaderStorageBlockNames.contains(name))
         {
-        	throw std::runtime_error(std::format("Shader storage block {} not found!", name));
+                throw std::runtime_error(std::format("Shader storage block {} not found!", name));
         }
 
         gl::GLuint blockIndex =
@@ -208,8 +195,6 @@ void GLShaderProgram::setShaderStorageBlockBinding(const std::string& name, cons
 
 std::unordered_set<std::string> GLShaderProgram::getResourceNames(gl::GLenum resourceInterface)
 {
-	PROFILE_FUNCTION();
-
         std::unordered_set<std::string> names;
 
         gl::GLint numResources{};
@@ -224,7 +209,8 @@ std::unordered_set<std::string> GLShaderProgram::getResourceNames(gl::GLenum res
         for (gl::GLint i = 0; i < numResources; ++i)
         {
                 gl::GLsizei actualLength{};
-                gl::glGetProgramResourceName(programId, resourceInterface, i, nameBuffer.size(), &actualLength,
+                gl::glGetProgramResourceName(programId, resourceInterface, i,
+                                             static_cast<gl::GLsizei>(nameBuffer.size()), &actualLength,
                                              nameBuffer.data());
 
                 names.emplace(nameBuffer.data(), actualLength);
