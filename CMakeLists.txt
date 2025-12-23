@@ -51,7 +51,7 @@ list(APPEND include
 )
 
 if (MSVC)
-	add_compile_options(/W4 /WX)
+	add_compile_options(/W4)
 else()
 	add_compile_options(-pedantic -Wall -Wextra -Werror -fdiagnostics-color=always)
 endif()

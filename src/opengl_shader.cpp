@@ -127,9 +127,9 @@ GLShaderProgram::GLShaderProgram(const GLContext&, const std::vector<std::shared
                 spdlog::trace("Linked program; Log: {}", linkLog);
         }
 
-        uniformVariableNames = getResourceNames(gl::GLenum::GL_UNIFORM);
-        uniformBlockNames = getResourceNames(gl::GLenum::GL_UNIFORM_BLOCK);
-        shaderStorageBlockNames = getResourceNames(gl::GLenum::GL_SHADER_STORAGE_BLOCK);
+        // uniformVariableNames = getResourceNames(gl::GLenum::GL_UNIFORM);
+        // uniformBlockNames = getResourceNames(gl::GLenum::GL_UNIFORM_BLOCK);
+        // shaderStorageBlockNames = getResourceNames(gl::GLenum::GL_SHADER_STORAGE_BLOCK);
 }
 
 GLShaderProgram::~GLShaderProgram()
@@ -139,30 +139,30 @@ GLShaderProgram::~GLShaderProgram()
 
 void GLShaderProgram::setUniformValue(const std::string& name, const glm::vec4& value)
 {
-	//        if (!uniformVariableNames.contains(name)) 
-	// {
-	// 	throw std::runtime_error("Uniform {} not found!");
-	// }
+        //        if (!uniformVariableNames.contains(name))
+        // {
+        // 	throw std::runtime_error("Uniform {} not found!");
+        // }
 
         gl::glUniform4fv(gl::glGetUniformLocation(programId, name.data()), 1, glm::value_ptr(value));
 }
 
 void GLShaderProgram::setUniformValue(const std::string& name, const int value)
 {
-	//        if (!uniformVariableNames.contains(name)) 
-	// {
-	// 	throw std::runtime_error("Uniform {} not found!");
-	// }
+        //        if (!uniformVariableNames.contains(name))
+        // {
+        // 	throw std::runtime_error("Uniform {} not found!");
+        // }
 
         gl::glUniform1i(gl::glGetUniformLocation(programId, name.data()), value);
 }
 
 void GLShaderProgram::setUniformBlockBinding(const std::string& name, const gl::GLuint binding)
 {
-	//        if (!uniformBlockNames.contains(name)) 
-	// {
-	// 	throw std::runtime_error("Uniform block {} not found!");
-	// }
+        //        if (!uniformBlockNames.contains(name))
+        // {
+        // 	throw std::runtime_error("Uniform block {} not found!");
+        // }
 
         gl::GLuint blockIndex = gl::glGetUniformBlockIndex(programId, name.data());
         gl::glUniformBlockBinding(programId, blockIndex, binding);
@@ -170,10 +170,10 @@ void GLShaderProgram::setUniformBlockBinding(const std::string& name, const gl::
 
 void GLShaderProgram::setShaderStorageBlockBinding(const std::string& name, const gl::GLuint binding)
 {
-	//        if (!shaderStorageBlockNames.contains(name)) 
-	// {
-	// 	throw std::runtime_error("Shader storage block {} not found!");
-	// }
+        //        if (!shaderStorageBlockNames.contains(name))
+        // {
+        // 	throw std::runtime_error("Shader storage block {} not found!");
+        // }
 
         gl::GLuint blockIndex =
             gl::glGetProgramResourceIndex(programId, gl::GLenum::GL_SHADER_STORAGE_BLOCK, name.data());
