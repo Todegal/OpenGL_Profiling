@@ -26,6 +26,11 @@ class PBRRenderer
                 renderContext.camera = newCamera;
         }
 
+        void setRenderFlags(RenderFlags flags)
+        {
+                renderContext.renderFlags = flags;
+        }
+
         // void resize(glm::ivec2 screenSize);
 
         // void imguiFrame(imgui_data& data);

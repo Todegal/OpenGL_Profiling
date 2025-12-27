@@ -30,7 +30,7 @@ struct MeshPrimitive
 	// Bounding box
 	glm::vec3 min, max;
 
-	tinygltf::Material materialDesc; // TODO: Materials System
+	tinygltf::RenderMaterial materialDesc; // TODO: Materials System
 
 	std::shared_ptr<TransformNode> transform = nullptr;
 };

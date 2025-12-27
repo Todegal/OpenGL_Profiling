@@ -2,11 +2,61 @@
 
 #include <glm/gtc/matrix_transform.hpp>
 
+#include <algorithm>
+#include <execution>
+
+static constexpr glm::vec3 scale = glm::vec3(0.005f);
+
 RenderContext::RenderContext(GLContext& context, const RawScene& scene, std::shared_ptr<Camera> initialCamera)
-    : frameUniforms(), globalTextures(), globalBuffers(), globalResources(), glContext(context),
-      camera(initialCamera), sceneMeshes(), opaqueMeshes(), translucentMeshes(), materials(), fullscreenTriBuffer(),
-      fullscreenTriVAO()
+    : renderFlags(), frameUniforms(), globalTextures(), globalBuffers(), globalResources(), glContext(context),
+      camera(initialCamera), framebuffer(), defaultColourTarget(), depthRenderbuffer(), sceneMeshes(), opaqueMeshes(),
+      translucentMeshes(), materials(), fullscreenTriBuffer(), fullscreenTriVAO()
 {
+        PROFILE_FUNCTION();
+
+        for (const auto& material : scene.getMaterials())
+        {
+                const std::shared_ptr<RenderMaterial> m = std::make_shared<RenderMaterial>();
+                materials.push_back(m);
+
+                // Load the texture
+                std::shared_ptr<const RawTexture> albedo = material->getAlbedoTexture();
+                if (albedo)
+                {
+                        m->albedoTexture = std::make_unique<GLTexture2D>(glContext, *albedo);
+                        m->albedoTexture->setParameter(gl::GLenum::GL_TEXTURE_MIN_FILTER,
+                                                       gl::GLenum::GL_LINEAR_MIPMAP_LINEAR);
+                        m->albedoTexture->fillMipmaps();
+                }
+                else { m->albedoTexture = nullptr; }
+
+                m->albedoFactor = material->getAlbedoFactor();
+
+                std::shared_ptr<const RawTexture> metallicRoughness = material->getMetallicRoughnessTexture();
+                if (metallicRoughness)
+                {
+                        m->metallicRoughnessTexture = std::make_unique<GLTexture2D>(glContext, *metallicRoughness);
+                        m->metallicRoughnessTexture->setParameter(gl::GLenum::GL_TEXTURE_MIN_FILTER,
+                                                                  gl::GLenum::GL_LINEAR_MIPMAP_LINEAR);
+                        m->metallicRoughnessTexture->fillMipmaps();
+                }
+                else { m->metallicRoughnessTexture = nullptr; }
+
+                m->metallicRoughnessFactor = material->getAlbedoFactor();
+
+                std::shared_ptr<const RawTexture> normal = material->getNormalTexture();
+                if (normal)
+                {
+                        m->normalTexture = std::make_unique<GLTexture2D>(glContext, *normal);
+                        m->normalTexture->setParameter(gl::GLenum::GL_TEXTURE_MIN_FILTER,
+                                                       gl::GLenum::GL_LINEAR_MIPMAP_LINEAR);
+                        m->normalTexture->fillMipmaps();
+                }
+                else { m->normalTexture = nullptr; }
+
+                m->normalScale = material->getNormalScale();
+        }
+
         for (const auto& mesh : scene.getMeshes())
         {
                 // Define some aliases
@@ -23,9 +73,13 @@ RenderContext::RenderContext(GLContext& context, const RawScene& scene, std::sha
                 const std::size_t vertexSize = sizeof(glm::vec3) + sizeof(glm::vec3) + sizeof(glm::vec2);
 
                 // Create mesh and allocate size
-                const std::shared_ptr<Mesh> m = std::make_shared<Mesh>();
+                const std::shared_ptr<RenderMesh> m = std::make_shared<RenderMesh>();
                 sceneMeshes.push_back(m);
-                opaqueMeshes.push_back(m);
+                if (scene.getMaterials().at(mesh->getMaterialIndex())->isTranslucent())
+                {
+                        translucentMeshes.push_back(m);
+                }
+                else { opaqueMeshes.push_back(m); }
 
                 m->vbo = std::make_unique<GLBuffer>(glContext, totalBufferSize,
                                                     gl::BufferStorageMask::GL_DYNAMIC_STORAGE_BIT);
@@ -57,43 +111,7 @@ RenderContext::RenderContext(GLContext& context, const RawScene& scene, std::sha
                                         static_cast<gl::GLuint>(sizeof(glm::vec3) * 2)); // texcoords
 
                 m->materialIdx = mesh->getMaterialIndex();
-        }
-
-        for (const auto& material : scene.getMaterials())
-        {
-                const std::shared_ptr<Material> m = std::make_shared<Material>();
-                materials.push_back(m);
-
-                // Load the texture
-                std::shared_ptr<const RawTexture> albedo = material->getAlbedoTexture();
-                if (albedo)
-                {
-                        m->albedoTexture = std::make_unique<GLTexture2D>(glContext, *albedo);
-                        m->albedoTexture->fillMipmaps();
-                }
-                else { m->albedoTexture = nullptr; }
-
-                m->albedoFactor = material->getAlbedoFactor();
-
-                std::shared_ptr<const RawTexture> metallicRoughness = material->getMetallicRoughnessTexture();
-                if (metallicRoughness)
-                {
-                        m->metallicRoughnessTexture = std::make_unique<GLTexture2D>(glContext, *metallicRoughness);
-                        m->metallicRoughnessTexture->fillMipmaps();
-                }
-                else { m->metallicRoughnessTexture = nullptr; }
-
-                m->metallicRoughnessFactor = material->getAlbedoFactor();
-
-                std::shared_ptr<const RawTexture> normal = material->getNormalTexture();
-                if (normal)
-                {
-                        m->normalTexture = std::make_unique<GLTexture2D>(glContext, *normal);
-                        m->normalTexture->fillMipmaps();
-                }
-                else { m->normalTexture = nullptr; }
-
-                m->normalScale = material->getNormalScale();
+                m->localCentre = mesh->getCentre();
         }
 
         const static std::array<const glm::vec3, 3> fullscreenTri = {
@@ -113,37 +131,32 @@ RenderContext::RenderContext(GLContext& context, const RawScene& scene, std::sha
 
         const auto& screenDimensions = glContext.getWindow().getFramebufferSize();
 
-        gl::glCreateFramebuffers(1, &framebuffer);
+        framebuffer = std::make_unique<GLFramebuffer>(glContext);
+        defaultColourTarget =
+            std::make_unique<GLTexture2D>(glContext, screenDimensions.x, screenDimensions.y, gl::GLenum::GL_RGB8, 1);
+        depthRenderbuffer = std::make_unique<GLRenderbuffer>(glContext, screenDimensions.x, screenDimensions.y,
+                                                             gl::GLenum::GL_DEPTH24_STENCIL8);
 
-        gl::glCreateTextures(gl::GLenum::GL_TEXTURE_2D, 1, &defaultColourTarget);
-        gl::glTextureStorage2D(defaultColourTarget, 1, gl::GLenum::GL_RGB8, screenDimensions.x, screenDimensions.y);
-        gl::glNamedFramebufferTexture(framebuffer, gl::GLenum::GL_COLOR_ATTACHMENT0, defaultColourTarget, 0);
+        framebuffer->bindAttachment(gl::GLenum::GL_COLOR_ATTACHMENT0, *defaultColourTarget, 0);
+        framebuffer->bindAttachment(gl::GLenum::GL_DEPTH_STENCIL_ATTACHMENT, *depthRenderbuffer);
 
-        gl::glCreateRenderbuffers(1, &depthRenderBuffer);
-        gl::glNamedRenderbufferStorage(depthRenderBuffer, gl::GLenum::GL_DEPTH24_STENCIL8, screenDimensions.x,
-                                       screenDimensions.y);
-        gl::glNamedFramebufferRenderbuffer(framebuffer, gl::GLenum::GL_DEPTH_STENCIL_ATTACHMENT,
-                                           gl::GLenum::GL_RENDERBUFFER, depthRenderBuffer);
-
-        if (gl::glCheckNamedFramebufferStatus(framebuffer, gl::GLenum::GL_FRAMEBUFFER) !=
-            gl::GLenum::GL_FRAMEBUFFER_COMPLETE)
-        {
-                throw std::runtime_error("Failed to complete default framebuffer!");
-        }
+        if (!framebuffer->isComplete()) { throw std::runtime_error("Failed to complete default framebuffer!"); }
 }
 
 void RenderContext::drawScene()
 {
+        PROFILE_FUNCTION();
+
         glContext.enable(gl::GLenum::GL_CULL_FACE);
         glContext.enable(gl::GLenum::GL_DEPTH_TEST);
 
+        // todo: WORK OUT A TRANSFORM SYSTEM!!
+        ObjectMatrices objectMatrices;
+        objectMatrices.modelMatrix = glm::scale(glm::mat4(1.0f), scale);
+        objectMatrices.normalMatrix = glm::transpose(glm::inverse(glm::mat3(objectMatrices.modelMatrix)));
+
         for (const auto& mesh : sceneMeshes)
         {
-                // todo: WORK OUT A TRANSFORM SYSTEM!!
-                ObjectMatrices objectMatrices;
-                objectMatrices.modelMatrix = glm::scale(glm::mat4(1.0f), glm::vec3(0.005f));
-                objectMatrices.normalMatrix = glm::transpose(glm::inverse(glm::mat3(objectMatrices.modelMatrix)));
-
                 globalBuffers.at("ObjectBuffer")->subData<ObjectMatrices>(0, {&objectMatrices, 1});
 
                 mesh->vao->bind();
@@ -156,20 +169,104 @@ void RenderContext::drawScene()
 
 void RenderContext::drawScene(GLShaderProgram& shaderProgram)
 {
+        PROFILE_FUNCTION();
+
         glContext.enable(gl::GLenum::GL_CULL_FACE);
         glContext.enable(gl::GLenum::GL_DEPTH_TEST);
 
         shaderProgram.useProgram();
 
+        // todo: WORK OUT A TRANSFORM SYSTEM!!
+        ObjectMatrices objectMatrices;
+        objectMatrices.modelMatrix = glm::scale(glm::mat4(1.0f), scale);
+        objectMatrices.normalMatrix = glm::transpose(glm::inverse(glm::mat3(objectMatrices.modelMatrix)));
+
+        globalBuffers.at("ObjectBuffer")->subData<ObjectMatrices>(0, {&objectMatrices, 1});
+
         for (const auto& mesh : sceneMeshes)
         {
-                // todo: WORK OUT A TRANSFORM SYSTEM!!
-                ObjectMatrices objectMatrices;
-                objectMatrices.modelMatrix = glm::scale(glm::mat4(1.0f), glm::vec3(0.005f));
-                objectMatrices.normalMatrix = glm::transpose(glm::inverse(glm::mat3(objectMatrices.modelMatrix)));
+                loadMaterialProperties(*materials[mesh->materialIdx], shaderProgram);
 
-                globalBuffers.at("ObjectBuffer")->subData<ObjectMatrices>(0, {&objectMatrices, 1});
+                mesh->vao->bind();
+                mesh->ebo->bind(gl::GLenum::GL_ELEMENT_ARRAY_BUFFER);
 
+                gl::glDrawElements(gl::GLenum::GL_TRIANGLES, static_cast<gl::GLsizei>(mesh->vertexCount),
+                                   gl::GLenum::GL_UNSIGNED_INT, (void*)0);
+        }
+}
+
+void RenderContext::drawTranslucentScene(GLShaderProgram& shaderProgram)
+{
+        PROFILE_FUNCTION();
+
+        glContext.enable(gl::GLenum::GL_CULL_FACE);
+        glContext.enable(gl::GLenum::GL_DEPTH_TEST);
+
+        glContext.enable(gl::GLenum::GL_BLEND);
+        gl::glBlendFunc(gl::GLenum::GL_SRC_ALPHA, gl::GLenum::GL_ONE_MINUS_SRC_ALPHA);
+        // gl::glBlendFunc(gl::GLenum::GL_ONE, gl::GLenum::GL_ONE_MINUS_SRC_ALPHA);
+
+        gl::glDepthMask(false);
+
+        shaderProgram.useProgram();
+
+        // todo: WORK OUT A TRANSFORM SYSTEM!!
+        ObjectMatrices objectMatrices;
+        objectMatrices.modelMatrix = glm::scale(glm::mat4(1.0f), scale);
+        objectMatrices.normalMatrix = glm::transpose(glm::inverse(glm::mat3(objectMatrices.modelMatrix)));
+
+        globalBuffers.at("ObjectBuffer")->subData<ObjectMatrices>(0, {&objectMatrices, 1});
+
+        // todo: THIS NEEDS A TRANSFORM SYTEM!!
+        std::sort(std::execution::par, translucentMeshes.begin(), translucentMeshes.end(),
+                  [&](const std::shared_ptr<RenderMesh>& a, const std::shared_ptr<RenderMesh>& b) -> bool {
+                          const glm::vec3 aWorldCentre =
+                              glm::vec3(glm::vec4(a->localCentre, 1.0f) * objectMatrices.modelMatrix);
+                          const glm::vec3 bWorldCentre =
+                              glm::vec3(glm::vec4(b->localCentre, 1.0f) * objectMatrices.modelMatrix);
+
+                          const float aDist =
+                              glm::dot(camera->getEye() - aWorldCentre, camera->getEye() - aWorldCentre);
+                          const float bDist =
+                              glm::dot(camera->getEye() - bWorldCentre, camera->getEye() - bWorldCentre);
+
+                          return aDist > bDist;
+                  });
+
+        for (const auto& mesh : translucentMeshes)
+        {
+
+                loadMaterialProperties(*materials[mesh->materialIdx], shaderProgram);
+
+                mesh->vao->bind();
+                mesh->ebo->bind(gl::GLenum::GL_ELEMENT_ARRAY_BUFFER);
+
+                gl::glDrawElements(gl::GLenum::GL_TRIANGLES, static_cast<gl::GLsizei>(mesh->vertexCount),
+                                   gl::GLenum::GL_UNSIGNED_INT, (void*)0);
+        }
+
+        gl::glDepthMask(true);
+}
+
+void RenderContext::drawOpaqueScene(GLShaderProgram& shaderProgram)
+{
+        PROFILE_FUNCTION();
+
+        glContext.enable(gl::GLenum::GL_CULL_FACE);
+        glContext.enable(gl::GLenum::GL_DEPTH_TEST);
+        glContext.disable(gl::GLenum::GL_BLEND);
+
+        shaderProgram.useProgram();
+
+        // todo: WORK OUT A TRANSFORM SYSTEM!!
+        ObjectMatrices objectMatrices;
+        objectMatrices.modelMatrix = glm::scale(glm::mat4(1.0f), scale);
+        objectMatrices.normalMatrix = glm::transpose(glm::inverse(glm::mat3(objectMatrices.modelMatrix)));
+
+        globalBuffers.at("ObjectBuffer")->subData<ObjectMatrices>(0, {&objectMatrices, 1});
+
+        for (const auto& mesh : opaqueMeshes)
+        {
                 loadMaterialProperties(*materials[mesh->materialIdx], shaderProgram);
 
                 mesh->vao->bind();
@@ -182,6 +279,8 @@ void RenderContext::drawScene(GLShaderProgram& shaderProgram)
 
 void RenderContext::drawFullscreen()
 {
+        PROFILE_FUNCTION();
+
         glContext.disable(gl::GLenum::GL_CULL_FACE);
 
         fullscreenTriVAO->bind();
@@ -189,7 +288,7 @@ void RenderContext::drawFullscreen()
         gl::glDrawArrays(gl::GLenum::GL_TRIANGLES, 0, 3);
 }
 
-void RenderContext::loadMaterialProperties(const Material& material, GLShaderProgram& shaderProgram)
+void RenderContext::loadMaterialProperties(const RenderMaterial& material, GLShaderProgram& shaderProgram)
 {
         if (material.albedoTexture)
         {
@@ -211,13 +310,14 @@ void RenderContext::loadMaterialProperties(const Material& material, GLShaderPro
 
         shaderProgram.setUniformValue("uMetallicRoughness.factor", material.metallicRoughnessFactor);
 
-        if (material.normalTexture)
+        if (material.normalTexture && renderFlags.get<RenderFlags::NORMALS_ENABLED>())
         {
                 material.normalTexture->bindUnit(2);
 
                 shaderProgram.setUniformValue("uNormalMap.textureMap", 2);
                 shaderProgram.setUniformValue("uNormalMap.isTextureEnabled", true);
         }
+        else { shaderProgram.setUniformValue("uNormalMap.isTextureEnabled", false); }
 
         shaderProgram.setUniformValue("uNormalMap.factor", {material.normalScale, 0.0f, 0.0f, 0.0f});
 }

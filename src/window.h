@@ -29,7 +29,6 @@ struct WindowCreationFlags
         bool maximized = false;
         bool resizable = false;
         bool fullscreen = false;
-        std::int8_t samples = 1;
 };
 
 class Window

@@ -7,6 +7,7 @@ ForwardRenderPass::ForwardRenderPass(GLContext& context, RenderContext& frameDes
                                     std::make_shared<GLShader>(glContext, "shaders/forward_pass/forward_pass.frag.glsl",
                                                                gl::GLenum::GL_FRAGMENT_SHADER)})
 {
+        PROFILE_FUNCTION();
         const auto& objectMatricesBuffer = renderContext.globalBuffers.at("ObjectBuffer");
         objectMatricesBuffer->bindBase(gl::GLenum::GL_UNIFORM_BUFFER, 0);
         forwardPassShader.setUniformBlockBinding("ObjectBuffer", 0);
@@ -20,9 +21,28 @@ ForwardRenderPass::ForwardRenderPass(GLContext& context, RenderContext& frameDes
         forwardPassShader.setShaderStorageBlockBinding("PointLightBuffer", 0);
 }
 
+void ForwardRenderPass::frameStart()
+{
+        PROFILE_FUNCTION();
+}
+
 void ForwardRenderPass::frameExecute()
 {
-        renderContext.drawScene(forwardPassShader);
+        PROFILE_FUNCTION();
+
+        if (!renderContext.renderFlags.get<RenderFlags::FORWARD_PASS_ENABLED>()) { return; }
+
+        if (!renderContext.renderFlags.get<RenderFlags::DEFERRED_PASS_ENABLED>())
+        {
+                renderContext.drawOpaqueScene(forwardPassShader);
+        }
+
+        renderContext.drawTranslucentScene(forwardPassShader);
+}
+
+void ForwardRenderPass::frameEnd()
+{
+        PROFILE_FUNCTION();
 }
 
 void ForwardRenderPass::refresh()

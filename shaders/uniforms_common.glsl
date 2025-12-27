@@ -1,16 +1,5 @@
 #define NUM_CASCADES 5
 
-layout (std140) uniform FlagsBuffer
-{
-    bool uNormalsEnabled;
-    bool uOcclusionEnabled;
-    bool uShadowsEnabled;
-    bool uEnvironmentMapEnabled;
-    bool uEmulateSunEnabled;
-    bool uDeferredPassEnabled;
-    bool uHDRPassEnabled;
-};
-
 layout(std140) uniform FrameUniformsBuffer
 {
     mat4 uProjectionMatrix;

@@ -6,6 +6,8 @@
 PBRRenderer::PBRRenderer(GLContext& context, const RawScene& initialScene, std::shared_ptr<Camera> initialCamera)
     : glContext(context), renderContext(context, initialScene, initialCamera)
 {
+        PROFILE_FUNCTION();
+
         // define uniform buffers
         renderContext.globalBuffers["ObjectBuffer"] = std::make_unique<GLBuffer>(
             glContext, sizeof(RenderContext::ObjectMatrices), gl::BufferStorageMask::GL_DYNAMIC_STORAGE_BIT);
@@ -16,13 +18,13 @@ PBRRenderer::PBRRenderer(GLContext& context, const RawScene& initialScene, std::
         // setup lights
         renderContext.pointLights.resize(4);
 
-        renderContext.pointLights[0].radiance = glm::vec4(10.0f, 0.0f, 0.0f, 0.0f);
+        renderContext.pointLights[0].radiance = glm::vec4(1.0f, 0.0f, 0.0f, 0.0f);
         renderContext.pointLights[0].position = glm::vec4(2.0f, 1.0f, 0.0f, 0.0f);
 
-        renderContext.pointLights[1].radiance = glm::vec4(0.0f, 10.0f, 0.0f, 0.0f);
+        renderContext.pointLights[1].radiance = glm::vec4(0.0f, 1.0f, 0.0f, 0.0f);
         renderContext.pointLights[1].position = glm::vec4(0.0f, 3.0f, 0.0f, 0.0f);
 
-        renderContext.pointLights[2].radiance = glm::vec4(0.0f, 0.0f, 10.0f, 0.0f);
+        renderContext.pointLights[2].radiance = glm::vec4(0.0f, 0.0f, 1.0f, 0.0f);
         renderContext.pointLights[2].position = glm::vec4(0.0f, 1.0f, 2.0f, 0.0f);
 
         renderContext.pointLights[3].radiance = glm::vec4(5.0f, 5.0f, 5.0f, 0.0f);
@@ -42,6 +44,8 @@ PBRRenderer::PBRRenderer(GLContext& context, const RawScene& initialScene, std::
 
 void PBRRenderer::frame()
 {
+        PROFILE_FUNCTION();
+
         const auto& screenDimensions = glContext.getWindow().getFramebufferSize();
 
         renderContext.frameUniforms.projectionMatrix = glm::perspective(
@@ -54,7 +58,7 @@ void PBRRenderer::frame()
         renderContext.globalBuffers.at("FrameUniformsBuffer")
             ->subData<RenderContext::FrameUniforms>(0, std::span(&renderContext.frameUniforms, 1));
 
-        gl::glBindFramebuffer(gl::GL_DRAW_FRAMEBUFFER, renderContext.framebuffer);
+        renderContext.framebuffer->bindDraw();
 
         forwardPass->frameStart();
         hdrPass->frameStart();
@@ -67,15 +71,17 @@ void PBRRenderer::frame()
 
         gl::glViewport(0, 0, screenDimensions.x, screenDimensions.y);
 
-        gl::glClearNamedFramebufferfv(renderContext.framebuffer, gl::GLenum::GL_COLOR, 0, glm::value_ptr(clearColour));
-        gl::glClearNamedFramebufferfv(renderContext.framebuffer, gl::GLenum::GL_DEPTH, 0, &clearDepth);
+        renderContext.framebuffer->clearBuffer(gl::GLenum::GL_COLOR, 0, glm::value_ptr(clearColour));
+        renderContext.framebuffer->clearBuffer(gl::GLenum::GL_DEPTH, 0, &clearDepth);
 
         forwardPass->frameExecute();
         hdrPass->frameExecute();
 
-        // present to default framebuffer
-        gl::glBlitNamedFramebuffer(renderContext.framebuffer, 0, 0, 0, screenDimensions.x, screenDimensions.y, 0, 0,
-                                   screenDimensions.x, screenDimensions.y,
-                                   gl::ClearBufferMask::GL_COLOR_BUFFER_BIT | gl::ClearBufferMask::GL_DEPTH_BUFFER_BIT,
-                                   gl::GLenum::GL_NEAREST);
+        // present to default framebuffer todo: fix this do better please
+        renderContext.framebuffer->blitToScreen(screenDimensions.x, screenDimensions.y);
+
+        forwardPass->frameEnd();
+        hdrPass->frameEnd();
+
+        gl::glBindFramebuffer(gl::GL_FRAMEBUFFER, 0);
 }

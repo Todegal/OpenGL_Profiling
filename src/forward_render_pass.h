@@ -8,11 +8,9 @@ class ForwardRenderPass : public RenderPass
         ForwardRenderPass(GLContext& context, RenderContext& renderContext);
 
       public:
-        void frameStart() override
-        {
-        }
-
+        void frameStart() override;
         void frameExecute() override;
+        void frameEnd() override;
         void refresh() override;
 
       private:

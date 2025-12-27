@@ -49,10 +49,10 @@ vec3 calculateLightContribution(
 
 	float shadow = 0.0;
 
-	if (uShadowsEnabled)
-	{
-		// todo: do shadows
-	}
+	// if (uShadowsEnabled)
+	// {
+	 	// todo: do shadows
+	// }
 
 	return (diffuseColour * Fd + Fr) * lightAttenuatedRadiance * NdotL * (1.0 - shadow);
 }

@@ -60,7 +60,7 @@ SimpleRenderer::SimpleRenderer(GLContext& glContext, const RawScene& scene, cons
                 const std::size_t vertexSize = sizeof(glm::vec3) + sizeof(glm::vec3) + sizeof(glm::vec2);
 
                 // Create mesh and allocate size
-                const std::shared_ptr<Mesh> m = std::make_shared<Mesh>(glContext);
+                const std::shared_ptr<RenderMesh> m = std::make_shared<RenderMesh>(glContext);
                 meshes.push_back(m);
 
                 m->vbo = std::make_unique<GLBuffer>(glContext, totalBufferSize,
@@ -96,6 +96,8 @@ SimpleRenderer::SimpleRenderer(GLContext& glContext, const RawScene& scene, cons
                 if (albedo)
                 {
                         m->albedoTexture = std::make_unique<GLTexture2D>(glContext, *albedo);
+                        m->albedoTexture->setParameter(gl::GLenum::GL_TEXTURE_MIN_FILTER,
+                                                       gl::GLenum::GL_LINEAR_MIPMAP_LINEAR);
                         m->albedoTexture->fillMipmaps();
                 }
                 else { m->albedoTexture = nullptr; }
@@ -107,6 +109,8 @@ SimpleRenderer::SimpleRenderer(GLContext& glContext, const RawScene& scene, cons
                 if (metallicRoughness)
                 {
                         m->metallicRoughnessTexture = std::make_unique<GLTexture2D>(glContext, *metallicRoughness);
+                        m->metallicRoughnessTexture->setParameter(gl::GLenum::GL_TEXTURE_MIN_FILTER,
+                                                       gl::GLenum::GL_LINEAR_MIPMAP_LINEAR);
                         m->metallicRoughnessTexture->fillMipmaps();
                 }
                 else { m->metallicRoughnessTexture = nullptr; }
@@ -117,6 +121,8 @@ SimpleRenderer::SimpleRenderer(GLContext& glContext, const RawScene& scene, cons
                 if (normal)
                 {
                         m->normalTexture = std::make_unique<GLTexture2D>(glContext, *normal);
+                        m->normalTexture->setParameter(gl::GLenum::GL_TEXTURE_MIN_FILTER,
+                                                       gl::GLenum::GL_LINEAR_MIPMAP_LINEAR);
                         m->normalTexture->fillMipmaps();
                 }
                 else { m->normalTexture = nullptr; }

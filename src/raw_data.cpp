@@ -118,6 +118,8 @@ RawMesh::RawMesh(const aiMesh* mesh)
                 }
         }
 
+        centre = (min + max) / 2.0f;
+
         materialIndex = mesh->mMaterialIndex;
 
         name = mesh->mName.data;

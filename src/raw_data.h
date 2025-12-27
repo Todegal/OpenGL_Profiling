@@ -6,6 +6,7 @@
 #include <glm/vec2.hpp>
 #include <glm/vec3.hpp>
 #include <glm/vec4.hpp>
+#include <spdlog/spdlog.h>
 
 #include <filesystem>
 #include <span>
@@ -75,6 +76,11 @@ class RawMesh
                 return max;
         }
 
+        const glm::vec3& getCentre() const
+        {
+                return centre;
+        }
+
         const std::string& getName() const
         {
                 return name;
@@ -94,6 +100,7 @@ class RawMesh
         // Mesh Bounds
         glm::vec3 max;
         glm::vec3 min;
+        glm::vec3 centre;
 
         std::string name;
 };
@@ -138,7 +145,6 @@ class RawTexture
         size_t dataSize;
 };
 
-// TODO -> add materials
 class RawMaterial
 {
       public:
@@ -194,6 +200,12 @@ class RawMaterial
         auto getNormalScale() const
         {
                 return normalScale;
+        }
+
+        bool isTranslucent() const
+        {
+                if (!albedoTexture) { return albedoFactor.a < 1.0f; }
+                return albedoTexture->getChannels() == 4;
         }
 
       private:

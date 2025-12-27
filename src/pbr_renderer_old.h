@@ -155,7 +155,7 @@ private:
 	
 	void renderPrimitive(const std::shared_ptr<MeshPrimitive> prim, ShaderProgram& program);
 
-	void loadMaterialProperties(const std::vector<GLuint>& textures, const tinygltf::Material& materialDesc, ShaderProgram& shader);
+	void loadMaterialProperties(const std::vector<GLuint>& textures, const tinygltf::RenderMaterial& materialDesc, ShaderProgram& shader);
 
 private: // RENDER PASSES
 

@@ -22,5 +22,7 @@ class RenderPass
       public:
         virtual void frameStart() = 0;
         virtual void frameExecute() = 0;
+        virtual void frameEnd() = 0;
+
         virtual void refresh() = 0;
 };

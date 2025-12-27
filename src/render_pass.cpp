@@ -148,7 +148,7 @@ void RenderPass::renderPrimitive(const std::shared_ptr<MeshPrimitive>& prim)
 	glBindVertexArray(0);
 }
 
-void RenderPass::parseMaterialProperties(const std::vector<GLuint>& textures, const tinygltf::Material& materialDesc)
+void RenderPass::parseMaterialProperties(const std::vector<GLuint>& textures, const tinygltf::RenderMaterial& materialDesc)
 {
 
 }

@@ -132,7 +132,11 @@ class GLBuffer
         template <typename T = std::byte>
         T* mapRange(gl::GLsizeiptr offset, gl::GLsizeiptr length, gl::BufferAccessMask access)
         {
-                if (offset + length > allocatedSizeBytes) {}
+                if (offset + length > allocatedSizeBytes)
+                {
+                        throw std::runtime_error("Cannot map beyond the buffer bounds!");
+                }
+
                 return static_cast<T*>(gl::glMapNamedBufferRange(bufferID, offset, length, access));
         }
 
@@ -197,67 +201,100 @@ class GLVertexArray
         gl::GLuint vaoID;
 };
 
-class GLTexture2D
+class GLTexture
 {
       public:
-        GLTexture2D(const GLContext&, std::size_t width, std::size_t height, gl::GLenum internalFormat,
+        GLTexture(const GLContext&, gl::GLenum target) : textureID(0)
+        {
+                gl::glCreateTextures(target, 1, &textureID);
+        }
+
+        GLTexture(const GLTexture&) = delete;
+        GLTexture& operator=(const GLTexture&) = delete;
+
+        GLTexture(GLTexture&& other) = delete;
+        GLTexture& operator=(const GLTexture&&) = delete;
+
+        ~GLTexture()
+        {
+                gl::glDeleteTextures(1, &textureID);
+        }
+
+        void setParameter(gl::GLenum parameter, gl::GLenum value)
+        {
+                gl::glTextureParameteri(textureID, parameter, value);
+        }
+
+        void setParameter(gl::GLenum parameter, gl::GLfloat value)
+        {
+                gl::glTextureParameterf(textureID, parameter, value);
+        }
+
+        void setParameter(gl::GLenum parameter, const gl::GLfloat* values)
+        {
+                gl::glTextureParameterfv(textureID, parameter, values);
+        }
+
+        void setParameter(gl::GLenum parameter, const gl::GLint* values)
+        {
+                gl::glTextureParameteriv(textureID, parameter, values);
+        }
+
+      protected:
+        gl::GLuint textureID;
+
+      private:
+        friend class GLFramebuffer;
+};
+
+class GLTexture2D : public GLTexture
+{
+      public:
+        GLTexture2D(const GLContext& c, std::size_t width, std::size_t height, gl::GLenum internalFormat,
                     std::size_t suggestedLevels = 0)
-            : w(width), h(height)
+            : GLTexture(c, gl::GLenum::GL_TEXTURE_2D), w(width), h(height)
         {
                 const int maxLevels = static_cast<int>(std::log2(std::min(w, h))) - 1;
                 const int levels = std::max(maxLevels, 1);
 
-                gl::glCreateTextures(gl::GLenum::GL_TEXTURE_2D, 1, &textureID);
                 gl::glTextureStorage2D(
                     textureID, suggestedLevels > 0 ? std::min(static_cast<int>(suggestedLevels), maxLevels) : levels,
                     internalFormat, static_cast<gl::GLsizei>(w), static_cast<gl::GLsizei>(h));
-
-                gl::glTextureParameteri(textureID, gl::GLenum::GL_TEXTURE_MIN_FILTER,
-                                        gl::GLenum::GL_LINEAR_MIPMAP_LINEAR);
         }
 
-        GLTexture2D(const GLContext&, const RawTexture& texture) : w(texture.getWidth()), h(texture.getHeight())
+        GLTexture2D(const GLContext& c, const RawTexture& texture)
+            : GLTexture(c, gl::GLenum::GL_TEXTURE_2D), w(texture.getWidth()), h(texture.getHeight())
         {
                 gl::GLenum format;
+                gl::GLenum internalFormat;
                 switch (texture.getChannels())
                 {
                 case 1:
                         format = gl::GLenum::GL_R;
+                        internalFormat = gl::GLenum::GL_R8;
                         break;
                 case 2:
                         format = gl::GLenum::GL_RG;
+                        internalFormat = gl::GLenum::GL_RG8;
                         break;
                 case 3:
                         format = gl::GLenum::GL_RGB;
+                        internalFormat = gl::GLenum::GL_RGB8;
                         break;
                 default:
                         format = gl::GLenum::GL_RGBA;
+                        internalFormat = gl::GLenum::GL_RGBA8;
                         break;
                 }
 
                 const int maxLevels = static_cast<int>(std::log2(std::min(w, h))) - 1;
                 const int levels = std::max(maxLevels, 1);
 
-                gl::glCreateTextures(gl::GLenum::GL_TEXTURE_2D, 1, &textureID);
-                gl::glTextureStorage2D(textureID, levels, gl::GLenum::GL_RGBA8, static_cast<gl::GLsizei>(w),
+                gl::glTextureStorage2D(textureID, levels, internalFormat, static_cast<gl::GLsizei>(w),
                                        static_cast<gl::GLsizei>(h));
-
-                gl::glTextureParameteri(textureID, gl::GLenum::GL_TEXTURE_MIN_FILTER,
-                                        gl::GLenum::GL_LINEAR_MIPMAP_LINEAR);
 
                 subImage(0, 0, 0, w, h, format, texture.getData());
         }
-
-        ~GLTexture2D()
-        {
-                gl::glDeleteTextures(1, &textureID);
-        }
-
-        GLTexture2D(const GLTexture2D&) = delete;
-        GLTexture2D& operator=(const GLTexture2D&) = delete;
-
-        GLTexture2D(GLTexture2D&& other) = delete;
-        GLTexture2D& operator=(const GLTexture2D&&) = delete;
 
         void subImage(std::size_t level, std::size_t offsetX, std::size_t offsetY, std::size_t width,
                       std::size_t height, gl::GLenum format, std::span<const std::uint8_t> data)
@@ -288,12 +325,98 @@ class GLTexture2D
                 return h;
         }
 
-        gl::GLuint getID()
+      private:
+        const std::size_t w, h;
+};
+
+class GLRenderbuffer
+{
+      public:
+        GLRenderbuffer(const GLContext&, std::size_t width, std::size_t height, gl::GLenum internalFormat)
         {
-                return textureID;
+
+                gl::glCreateRenderbuffers(1, &renderbufferID);
+                gl::glNamedRenderbufferStorage(renderbufferID, internalFormat, static_cast<gl::GLsizei>(width),
+                                               static_cast<gl::GLsizei>(height));
+        }
+
+        ~GLRenderbuffer()
+        {
+                gl::glDeleteRenderbuffers(1, &renderbufferID);
+        }
+
+        GLRenderbuffer(const GLRenderbuffer&) = delete;
+        GLRenderbuffer& operator=(const GLRenderbuffer&) = delete;
+
+        GLRenderbuffer(GLRenderbuffer&& other) = delete;
+        GLRenderbuffer& operator=(const GLRenderbuffer&&) = delete;
+
+      private:
+        gl::GLuint renderbufferID;
+
+        friend class GLFramebuffer;
+};
+
+class GLFramebuffer
+{
+      public:
+        GLFramebuffer(const GLContext&)
+        {
+                gl::glCreateFramebuffers(1, &framebufferID);
+        }
+
+        ~GLFramebuffer()
+        {
+                gl::glDeleteFramebuffers(1, &framebufferID);
+        }
+
+        GLFramebuffer(const GLFramebuffer&) = delete;
+        GLFramebuffer& operator=(const GLFramebuffer&) = delete;
+
+        GLFramebuffer(GLFramebuffer&& other) = delete;
+        GLFramebuffer& operator=(const GLFramebuffer&&) = delete;
+
+        void bindRead() const
+        {
+                gl::glBindFramebuffer(gl::GLenum::GL_READ_FRAMEBUFFER, framebufferID);
+        }
+
+        void bindDraw() const
+        {
+                gl::glBindFramebuffer(gl::GLenum::GL_DRAW_FRAMEBUFFER, framebufferID);
+        };
+
+        void bindAttachment(gl::GLenum attachment, const GLTexture& texture, gl::GLint level)
+        {
+                gl::glNamedFramebufferTexture(framebufferID, attachment, texture.textureID, level);
+        }
+
+        void bindAttachment(gl::GLenum attachment, const GLRenderbuffer& renderbuffer)
+        {
+                gl::glNamedFramebufferRenderbuffer(framebufferID, attachment, gl::GLenum::GL_RENDERBUFFER,
+                                                   renderbuffer.renderbufferID);
+        }
+
+        bool isComplete()
+        {
+                return gl::glCheckNamedFramebufferStatus(framebufferID, gl::GLenum::GL_FRAMEBUFFER) ==
+                       gl::GLenum::GL_FRAMEBUFFER_COMPLETE;
+        }
+
+        void clearBuffer(gl::GLenum buffer, gl::GLint drawBuffer, const gl::GLfloat* value)
+        {
+                gl::glClearNamedFramebufferfv(framebufferID, buffer, drawBuffer, value);
+        }
+
+        // stupid function TODO: rewrite
+        void blitToScreen(std::size_t screenWidth, std::size_t screenHeight)
+        {
+                gl::glBlitNamedFramebuffer(framebufferID, 0, 0, 0, static_cast<gl::GLint>(screenWidth),
+                                           static_cast<gl::GLint>(screenHeight), 0, 0,
+                                           static_cast<gl::GLint>(screenWidth), static_cast<gl::GLint>(screenHeight),
+                                           gl::ClearBufferMask::GL_COLOR_BUFFER_BIT, gl::GLenum::GL_LINEAR);
         }
 
       private:
-        const std::size_t w, h;
-        gl::GLuint textureID;
+        gl::GLuint framebufferID;
 };

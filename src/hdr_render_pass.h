@@ -11,6 +11,7 @@ class HDRRenderPass : public RenderPass
         // Inherited via RenderPass
         void frameStart() override;
         void frameExecute() override;
+        void frameEnd() override;
         void refresh() override;
 
       private:

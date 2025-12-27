@@ -70,5 +70,6 @@ find_package(assimp CONFIG REQUIRED)
 find_package(glm CONFIG REQUIRED)
 find_package(imgui CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
+find_package(argparse CONFIG REQUIRED)
 
-target_link_libraries(graphics_engine PRIVATE glfw glbinding::glbinding glbinding::glbinding-aux assimp::assimp glm::glm-header-only imgui::imgui spdlog::spdlog)
+target_link_libraries(graphics_engine PRIVATE argparse::argparse glfw glbinding::glbinding glbinding::glbinding-aux assimp::assimp glm::glm-header-only imgui::imgui spdlog::spdlog)

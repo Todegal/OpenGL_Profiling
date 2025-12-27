@@ -3,6 +3,8 @@
 #include <GLFW/glfw3.h>
 #include <spdlog/spdlog.h>
 
+#include <glm/common.hpp>
+
 #include "profiler.h"
 
 GLFWContext::GLFWContext()
@@ -39,7 +41,6 @@ Window::Window(const GLFWContext&, const WindowCreationFlags& flags)
         glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
 
         if (!flags.resizable) { glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE); }
-        if (flags.samples) { glfwWindowHint(GLFW_SAMPLES, flags.samples); }
 
         glfwWindowHint(GLFW_SRGB_CAPABLE, GLFW_TRUE);
 
@@ -65,9 +66,10 @@ Window::Window(const GLFWContext&, const WindowCreationFlags& flags)
         else if (width == 0 || height == 0) { throw std::runtime_error("Width and Height must be positive integers"); }
 
         GLFWwindow_Deleter windowDeleter;
-        windowPtr = GLFWUniqueWindowPtr(glfwCreateWindow(static_cast<int>(width), static_cast<int>(height),
-                                                         flags.title.c_str(), flags.fullscreen ? monitor : nullptr, nullptr),
-                                        windowDeleter);
+        windowPtr =
+            GLFWUniqueWindowPtr(glfwCreateWindow(static_cast<int>(width), static_cast<int>(height), flags.title.c_str(),
+                                                 flags.fullscreen ? monitor : nullptr, nullptr),
+                                windowDeleter);
         if (windowPtr == nullptr)
         {
                 glfwTerminate();
@@ -95,5 +97,5 @@ glm::ivec2 Window::getFramebufferSize() const
         int x, y;
         glfwGetFramebufferSize(windowPtr.get(), &x, &y);
 
-        return glm::ivec2(x, y);
+        return glm::max(glm::ivec2(x, y), glm::ivec2(1, 1));
 }

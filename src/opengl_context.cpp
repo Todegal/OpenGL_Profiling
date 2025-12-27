@@ -101,7 +101,5 @@ GLContext::GLContext(const Window& window) : windowRef(window)
 
         gl::glPixelStorei(gl::GLenum::GL_UNPACK_ALIGNMENT, 1);
         gl::glPixelStorei(gl::GLenum::GL_UNPACK_ALIGNMENT, 1);
-
-        enable(gl::GLenum::GL_MULTISAMPLE);
 }
 

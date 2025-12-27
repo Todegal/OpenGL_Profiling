@@ -23,8 +23,6 @@ void main()
 		baseColour *= texture(uBaseColour.textureMap, fs_in.texCoords);
 	}
 
-	if (baseColour.a < 0.01) { discard; }
-
 	float roughness = uMetallicRoughness.factor.g;
 	float metalMask = uMetallicRoughness.factor.b;
 	if (uMetallicRoughness.isTextureEnabled)

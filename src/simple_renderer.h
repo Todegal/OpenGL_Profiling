@@ -31,9 +31,9 @@ class SimpleRenderer
 
         const Camera& camera;
 
-        struct Mesh
+        struct RenderMesh
         {
-                Mesh(const GLContext& context) : vao(context)
+                RenderMesh(const GLContext& context) : vao(context)
                 {
                 }
 
@@ -53,7 +53,7 @@ class SimpleRenderer
                 float normalScale;
         };
 
-        std::vector<std::shared_ptr<Mesh>> meshes;
+        std::vector<std::shared_ptr<RenderMesh>> meshes;
 
         GLShaderProgram shaderProgram;
 
