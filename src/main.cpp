@@ -1,6 +1,6 @@
-#include <glbinding/gl/bitfield.h>
-
+﻿#include <glbinding/gl/bitfield.h>
 #include <glbinding/gl/functions.h>
+
 #define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
 
@@ -28,6 +28,7 @@
 #include "simple_renderer.h"
 #include "timer.h"
 #include "window.h"
+#include "scene_graph.h"
 
 #include <numbers>
 
@@ -107,16 +108,22 @@ int main(int argc, char** argv)
                 input.defineToggle("toggle_deferred_pass", {GLFW_KEY_D}, {}, false);
                 input.defineToggle("toggle_normals", {GLFW_KEY_N}, {}, true);
 
+                const Point3<WorldSpace> viewCenter(glm::vec3(0.0f));
+                const Vec3<WorldSpace> upVector(0.0f, 1.0f, 0.0f);
+
                 std::shared_ptr<OrbitCamera> orbitCamera =
-                    std::make_shared<OrbitCamera>(glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f), 1.0f, 0.01f);
+                    std::make_shared<OrbitCamera>(viewCenter, upVector, 1.0f, 0.01f);
 
                 std::unique_ptr<PBRRenderer> renderer;
 
-                {
-                        RawScene scene;
-                        scene.addFile(filepath);
+                SceneGraph sceneGraph;
 
-                        renderer = std::make_unique<PBRRenderer>(glContext, scene, orbitCamera);
+                {
+                        RawScene scene(sceneGraph);
+                        scene.addFile(filepath);
+                        scene.addFile("test_models/tv/Television_01_4k.gltf");
+
+                        renderer = std::make_unique<PBRRenderer>(glContext, scene, sceneGraph, orbitCamera);
                 }
 
 #ifndef NDEBUG

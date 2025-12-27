@@ -216,8 +216,8 @@ void SimpleRenderer::render()
                 frameUniforms.projectionMatrix = glm::perspective(
                     glm::radians(camera.getFov()),
                     static_cast<float>(screenDimensions.x) / static_cast<float>(screenDimensions.y), 0.01f, 100000.0f);
-                frameUniforms.viewMatrix = camera.getViewMatrix();
-                frameUniforms.cameraPosition = camera.getEye();
+                frameUniforms.viewMatrix = camera.getViewTransform().getMatrix();
+                frameUniforms.cameraPosition = camera.getEye().getv();
                 frameUniforms.numPointLights = static_cast<int>(pointLights.size());
 
                 // matrixUniforms.modelMatrix =

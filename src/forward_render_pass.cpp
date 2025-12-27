@@ -32,12 +32,7 @@ void ForwardRenderPass::frameExecute()
 
         if (!renderContext.renderFlags.get<RenderFlags::FORWARD_PASS_ENABLED>()) { return; }
 
-        if (!renderContext.renderFlags.get<RenderFlags::DEFERRED_PASS_ENABLED>())
-        {
-                renderContext.drawOpaqueScene(forwardPassShader);
-        }
-
-        renderContext.drawTranslucentScene(forwardPassShader);
+        renderContext.drawScene(forwardPassShader);
 }
 
 void ForwardRenderPass::frameEnd()

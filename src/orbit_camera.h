@@ -8,7 +8,7 @@
 class OrbitCamera : public Camera
 {
       public:
-        OrbitCamera(const glm::vec3& center, const glm::vec3& upVector, float radius, float minRadius,
+        OrbitCamera(const Point3<WorldSpace>& center, const Vec3<WorldSpace>& upVector, float radius, float minRadius,
                     float azimuthAngle = 0.0f, float polarAngle = 0.0f);
 
         void rotateAzimuth(const float radians);
@@ -18,22 +18,23 @@ class OrbitCamera : public Camera
         void moveHorizontal(const float distance);
         void moveVertical(const float distance);
 
-        virtual const glm::mat4 getViewMatrix() const;
-        virtual const glm::vec3 getEye() const;
+        virtual const WorldToView getViewTransform() const override;
+        virtual const Point3<WorldSpace> getEye() const override;
 
-        const glm::vec3 getViewPoint() const
+        const Point3<WorldSpace> getViewPoint() const
         {
                 return center;
         }
 
-        const glm::vec3 getUpVector() const
+        const Vec3<WorldSpace> getUpVector() const
         {
                 return upVector;
         }
 
-        const glm::vec3 getNormalizedViewVector() const
+        const Vec3<WorldSpace> getNormalizedViewVector() const
         {
-                return glm::normalize(center - getEye());
+                //return glm::normalize(center - getEye());
+                return (center - getEye()).normalized();
         }
 
         float getAzimuthAngle() const
@@ -51,14 +52,15 @@ class OrbitCamera : public Camera
                 return radius;
         }
 
-        void setViewPoint(glm::vec3 view)
+        void setViewPoint(Point3<WorldSpace> view)
         {
                 center = view;
         }
 
       private:
-        glm::vec3 center;   // Center of the orbit camera sphere (the point upon which the camera looks)
-        glm::vec3 upVector; // Up vector of the camera
+        Point3<WorldSpace> center;   // Center of the orbit camera sphere (the point upon which the camera looks)
+        Vec3<WorldSpace> upVector; // Up vector of the camera
+
         float radius;       // Radius of the orbit camera sphere
         float minRadius;    // Minimal radius of the orbit camera sphere (cannot fall below this value)
         float azimuthAngle; // Azimuth angle on the orbit camera sphere

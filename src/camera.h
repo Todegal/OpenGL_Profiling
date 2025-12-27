@@ -2,11 +2,13 @@
 
 #include <glm/glm.hpp>
 
+#include "transform.h"
+
 class Camera
 {
       public:
-        virtual const glm::mat4 getViewMatrix() const = 0;
-        virtual const glm::vec3 getEye() const = 0;
+        virtual const WorldToView getViewTransform() const = 0;
+        virtual const Point3<WorldSpace> getEye() const = 0;
 
       public:
         float getFov() const

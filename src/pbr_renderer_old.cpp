@@ -152,7 +152,7 @@ void PBRRenderer_old::frame()
 		depthPrepassShader.use();
 
 		depthPrepassShader.setMat4("uProjection", projectionMatrix);
-		depthPrepassShader.setMat4("uView", viewCameraPtr->getViewMatrix());
+		depthPrepassShader.setMat4("uView", viewCameraPtr->getViewTransform());
 		depthPrepassShader.setVec3("uCameraPosition", viewCameraPtr->getEye());
 
 		for (size_t i = 0; i < scene->sceneModels.size(); i++)
@@ -184,7 +184,7 @@ void PBRRenderer_old::frame()
 	unlitShader.use();
 
 	unlitShader.setMat4("uProjection", projectionMatrix);
-	unlitShader.setMat4("uView", viewCameraPtr->getViewMatrix());
+	unlitShader.setMat4("uView", viewCameraPtr->getViewTransform());
 
 	glBindVertexArray(sphere->vertexArray);
 
@@ -239,7 +239,7 @@ void PBRRenderer_old::frame()
 		skyboxShader.use();
 
 		skyboxShader.setMat4("uProjection", projectionMatrix);
-		skyboxShader.setMat4("uView", viewCameraPtr->getViewMatrix());
+		skyboxShader.setMat4("uView", viewCameraPtr->getViewTransform());
 
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_CUBE_MAP, environmentMap);
@@ -901,7 +901,7 @@ void PBRRenderer_old::loadLights()
 				glm::mat4 cutProjection = glm::perspective(glm::radians(viewCameraPtr->getFov()), aspectRatio, nearPlane, farPlane);
 
 				// get world-space frustum coordinates
-				const std::vector<glm::vec4> corners = getFrustumCorners(cutProjection * viewCameraPtr->getViewMatrix());
+				const std::vector<glm::vec4> corners = getFrustumCorners(cutProjection * viewCameraPtr->getViewTransform());
 
 				glm::vec3 center = glm::vec3(0.0f);
 				for (const auto& v : corners)
@@ -1246,7 +1246,7 @@ void PBRRenderer_old::buildGBuffer()
 	gBufferShader.use();
 
 	gBufferShader.setMat4("uProjection", projectionMatrix);
-	gBufferShader.setMat4("uView", viewCameraPtr->getViewMatrix());
+	gBufferShader.setMat4("uView", viewCameraPtr->getViewTransform());
 	gBufferShader.setVec3("uCameraPosition", viewCameraPtr->getEye());
 
 	for (size_t i = 0; i < scene->sceneModels.size(); i++)
@@ -1381,7 +1381,7 @@ void PBRRenderer_old::forwardPass()
 	forwardPassShader.use();
 
 	forwardPassShader.setMat4("uProjection", projectionMatrix);
-	forwardPassShader.setMat4("uView", viewCameraPtr->getViewMatrix());
+	forwardPassShader.setMat4("uView", viewCameraPtr->getViewTransform());
 	forwardPassShader.setVec3("uCameraPosition", viewCameraPtr->getEye());
 
 	forwardPassShader.setBool("uShadowsEnabled", flags[SHADOWS_ENABLED]);

@@ -13,7 +13,7 @@
 class PBRRenderer
 {
       public:
-        PBRRenderer(GLContext& context, const RawScene& initialScene, std::shared_ptr<Camera> initialCamera);
+        PBRRenderer(GLContext& context, const RawScene& sceneData, const SceneGraph& sceneGraph, std::shared_ptr<Camera> initialCamera);
         ~PBRRenderer() = default;
 
         // No copy/move
@@ -38,8 +38,9 @@ class PBRRenderer
 
       private:
         GLContext& glContext;
-
         RenderContext renderContext;
+
+        const SceneGraph& sceneGraph;
 
         std::unique_ptr<HDRRenderPass> hdrPass;
         std::unique_ptr<ForwardRenderPass> forwardPass;

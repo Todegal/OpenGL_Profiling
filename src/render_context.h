@@ -60,7 +60,7 @@ class RenderFlags
 class RenderContext
 {
       public:
-        RenderContext(GLContext& context, const RawScene& initialScene, std::shared_ptr<Camera> initialCamera);
+        RenderContext(GLContext& context, const RawScene& sceneData, const SceneGraph& sceneGraph, std::shared_ptr<Camera> initialCamera);
         ~RenderContext() = default;
 
         RenderContext() = delete;
@@ -72,12 +72,12 @@ class RenderContext
         RenderContext& operator=(const RenderContext&&) = delete;
 
         void drawScene();
-        void drawOpaqueScene();
-        void drawTranslucentScene();
+        //void drawOpaqueScene();
+        //void drawtranslucentscene();
 
         void drawScene(GLShaderProgram& shaderProgram);
-        void drawOpaqueScene(GLShaderProgram& shaderProgram);
-        void drawTranslucentScene(GLShaderProgram& shaderProgram);
+        //void drawOpaqueScene(GLShaderProgram& shaderProgram);
+        //void drawTranslucentScene(GLShaderProgram& shaderProgram);
 
         // will draw a triangle big enough to cover the whole screen
         void drawFullscreen();
@@ -111,7 +111,7 @@ class RenderContext
         {
                 glm::mat4 projectionMatrix;
                 glm::mat4 viewMatrix;
-                glm::vec3 cameraPosition;
+                Point3<WorldSpace> cameraPosition;
                 float pad0;
 
                 glm::vec4 directionalShadowCascadePlanes;
@@ -138,6 +138,8 @@ class RenderContext
       private:
         GLContext& glContext;
 
+        const SceneGraph& sceneGraph;
+
         // Here we store all of the scene data
         struct RenderMesh
         {
@@ -149,26 +151,28 @@ class RenderContext
 
                 std::size_t materialIdx{};
 
-                glm::vec3 localCentre{};
+                Point3<LocalSpace> centre{};
         };
 
-        std::vector<std::shared_ptr<RenderMesh>> sceneMeshes;
+        std::vector<std::shared_ptr<RenderMesh>> meshes;
         std::vector<std::shared_ptr<RenderMesh>> opaqueMeshes;
         std::vector<std::shared_ptr<RenderMesh>> translucentMeshes;
 
         struct RenderMaterial
         {
-                std::unique_ptr<GLTexture2D> albedoTexture{};
+                std::shared_ptr<GLTexture2D> albedoTexture{};
                 glm::vec4 albedoFactor{};
 
-                std::unique_ptr<GLTexture2D> metallicRoughnessTexture{};
+                std::shared_ptr<GLTexture2D> metallicRoughnessTexture{};
                 glm::vec4 metallicRoughnessFactor{};
 
-                std::unique_ptr<GLTexture2D> normalTexture{};
+                std::shared_ptr<GLTexture2D> normalTexture{};
                 float normalScale{};
         };
 
         std::vector<std::shared_ptr<RenderMaterial>> materials;
+
+        std::vector<std::shared_ptr<GLTexture2D>> textures;
 
         // data for a fullscreen tri used in fullscreen rendering
         std::unique_ptr<GLBuffer> fullscreenTriBuffer;

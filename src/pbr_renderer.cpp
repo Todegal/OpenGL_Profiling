@@ -3,8 +3,8 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
-PBRRenderer::PBRRenderer(GLContext& context, const RawScene& initialScene, std::shared_ptr<Camera> initialCamera)
-    : glContext(context), renderContext(context, initialScene, initialCamera)
+PBRRenderer::PBRRenderer(GLContext& context, const RawScene& sceneData, const SceneGraph& sceneGraph, std::shared_ptr<Camera> initialCamera)
+    : glContext(context), renderContext(context, sceneData, sceneGraph, initialCamera), sceneGraph(sceneGraph)
 {
         PROFILE_FUNCTION();
 
@@ -51,7 +51,7 @@ void PBRRenderer::frame()
         renderContext.frameUniforms.projectionMatrix = glm::perspective(
             glm::radians(renderContext.camera->getFov()),
             static_cast<float>(screenDimensions.x) / static_cast<float>(screenDimensions.y), 0.01f, 100000.0f);
-        renderContext.frameUniforms.viewMatrix = renderContext.camera->getViewMatrix();
+        renderContext.frameUniforms.viewMatrix = renderContext.camera->getViewTransform().getMatrix();
         renderContext.frameUniforms.cameraPosition = renderContext.camera->getEye();
         renderContext.frameUniforms.numPointLights = static_cast<int>(renderContext.pointLights.size());
 

@@ -23,7 +23,7 @@ private:
 	{
 	public:
 		// Inherited via Camera
-		const glm::mat4 getViewMatrix() const override;
+		const glm::mat4 getViewTransform() const override;
 		const glm::vec3 getEye() const override;
 
 		glm::vec3 eye;

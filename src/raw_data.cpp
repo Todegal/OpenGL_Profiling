@@ -14,16 +14,70 @@
 #include <assimp/postprocess.h>
 #include <assimp/scene.h>
 #include <assimp/texture.h>
+
 #include <glm/glm.hpp>
+#include <glm/gtx/matrix_decompose.hpp>
+
 #include <spdlog/spdlog.h>
 
 #include "profiler.h"
+#include "scene_graph.h"
 
 #include <filesystem>
 
-RawScene::RawScene()
+RawScene::RawScene(SceneGraph& sceneGraph) : sceneGraph(sceneGraph)
 {
         stbi_set_flip_vertically_on_load(true);
+}
+
+glm::mat4 RawScene::aiMatrixtoGLM(const aiMatrix4x4& aiMatrix)
+{
+        glm::mat4 result;
+        result[0][0] = aiMatrix.a1;
+        result[1][0] = aiMatrix.a2;
+        result[2][0] = aiMatrix.a3;
+        result[3][0] = aiMatrix.a4;
+        result[0][1] = aiMatrix.b1;
+        result[1][1] = aiMatrix.b2;
+        result[2][1] = aiMatrix.b3;
+        result[3][1] = aiMatrix.b4;
+        result[0][2] = aiMatrix.c1;
+        result[1][2] = aiMatrix.c2;
+        result[2][2] = aiMatrix.c3;
+        result[3][2] = aiMatrix.c4;
+        result[0][3] = aiMatrix.d1;
+        result[1][3] = aiMatrix.d2;
+        result[2][3] = aiMatrix.d3;
+        result[3][3] = aiMatrix.d4;
+        return result;
+}
+
+void RawScene::processNode(aiNode* aiNode, std::shared_ptr<SceneNode> parentNode)
+{
+        auto node = sceneGraph.addNode(aiNode->mName.C_Str(), parentNode);
+
+        const glm::mat4 localTransformMatrix = aiMatrixtoGLM(aiNode->mTransformation);
+
+        glm::vec3 scale;
+        glm::quat rotation;
+        glm::vec3 translation;
+        glm::vec3 skew;
+        glm::vec4 perspective;
+        glm::decompose(localTransformMatrix, scale, rotation, translation, skew, perspective);
+
+        node->setLocalPosition(translation);
+        node->setLocalRotation(rotation);
+        node->setLocalScale(scale);
+
+        for (size_t i = 0; i < aiNode->mNumMeshes; i++)
+        {
+                node->addMesh(aiNode->mMeshes[i] + meshes.size());
+        }
+
+        for (size_t i = 0; i < aiNode->mNumChildren; i++)
+        {
+                processNode(aiNode->mChildren[i], node);
+        }
 }
 
 void RawScene::addFile(const std::filesystem::path& filePath)
@@ -36,9 +90,9 @@ void RawScene::addFile(const std::filesystem::path& filePath)
 
         const aiScene* scene = importer.ReadFile(
             std::filesystem::absolute(filePath).string(),
-            aiProcess_CalcTangentSpace | aiProcess_EmbedTextures | /*aiProcess_GenSmoothNormals |*/
-                aiProcess_JoinIdenticalVertices | /*aiProcess_ImproveCacheLocality |*/ aiProcess_LimitBoneWeights |
-                aiProcess_RemoveRedundantMaterials | /*aiProcess_SplitLargeMeshes |*/ aiProcess_Triangulate |
+            aiProcess_CalcTangentSpace | aiProcess_EmbedTextures | aiProcess_GenSmoothNormals |
+                aiProcess_JoinIdenticalVertices | aiProcess_ImproveCacheLocality | aiProcess_LimitBoneWeights |
+                aiProcess_RemoveRedundantMaterials | aiProcess_SplitLargeMeshes | aiProcess_Triangulate |
                 aiProcess_GenUVCoords | aiProcess_SortByPType | aiProcess_FindDegenerates | aiProcess_FindInvalidData);
 
         if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE)
@@ -51,21 +105,30 @@ void RawScene::addFile(const std::filesystem::path& filePath)
 
         spdlog::trace("Loaded file: {}", filePath.string());
 
-        meshes.resize(scene->mNumMeshes);
+        const auto& root = sceneGraph.addNode(scene->mName.C_Str(), sceneGraph.getRoot());
+        processNode(scene->mRootNode, root);
+
+        meshes.reserve(meshes.size() + scene->mNumMeshes);
         for (size_t i = 0; i < scene->mNumMeshes; i++)
         {
-                meshes[i] = std::make_shared<RawMesh>(scene->mMeshes[i]);
+                meshes.emplace_back(std::make_shared<RawMesh>(scene->mMeshes[i], materials.size()));
         }
 
-        materials.resize(scene->mNumMaterials);
+        materials.reserve(materials.size() + scene->mNumMaterials);
         for (size_t i = 0; i < scene->mNumMaterials; i++)
         {
-                materials[i] = std::make_shared<RawMaterial>(scene->mMaterials[i], scene->mTextures, parentDir);
+                materials.emplace_back(std::make_shared<RawMaterial>(scene->mMaterials[i], textures.size()));
+        }
+
+        textures.reserve(textures.size() + scene->mNumTextures);
+        for (std::size_t i = 0; i < scene->mNumTextures; i++)
+        {
+                textures.emplace_back(std::make_shared<RawTexture>(scene->mTextures[i]));
         }
 }
 
 // I guess just copy all the data over...
-RawMesh::RawMesh(const aiMesh* mesh)
+RawMesh::RawMesh(const aiMesh* mesh, const std::size_t materialOffset)
 {
         PROFILE_FUNCTION();
 
@@ -79,48 +142,46 @@ RawMesh::RawMesh(const aiMesh* mesh)
                 indices[(i * 3) + 2] = face.mIndices[2];
         }
 
-        positions.resize(mesh->mNumVertices);
-        texCoords.resize(mesh->mNumVertices);
-        normals.resize(mesh->mNumVertices);
-        tangents.resize(mesh->mNumVertices);
-        bitangents.resize(mesh->mNumVertices);
+        vertices.resize(mesh->mNumVertices);
 
-        max = glm::vec3(0);
-        min = glm::vec3(std::numeric_limits<float>::max());
+        max = Point3<LocalSpace>();
+        min = Point3<LocalSpace>(glm::vec3(std::numeric_limits<float>::max()));
 
         for (size_t i = 0; i < mesh->mNumVertices; i++)
         {
                 const auto& position = mesh->mVertices[i];
-                positions[i] = glm::vec3(position.x, position.y, position.z);
+                vertices[i].position = Point3<LocalSpace>(position.x, position.y, position.z);
 
-                max = glm::max(max, positions[i]);
-                min = glm::min(min, positions[i]);
+                max = Point3<LocalSpace>(glm::max(max.getv(), vertices[i].position.getv()));
+                min = Point3<LocalSpace>(glm::min(min.getv(), vertices[i].position.getv()));
 
                 if (mesh->HasTextureCoords(0))
                 {
                         const auto& texCoord = mesh->mTextureCoords[0][i];
-                        texCoords[i] = glm::vec2(texCoord.x, texCoord.y);
+                        vertices[i].texCoord = glm::vec2(texCoord.x, texCoord.y);
                 }
 
                 if (mesh->HasNormals())
                 {
                         const auto& normal = mesh->mNormals[i];
-                        normals[i] = glm::vec3(normal.x, normal.y, normal.z);
+                        vertices[i].normal = Normal3<LocalSpace>(normal.x, normal.y, normal.z);
                 }
 
                 if (mesh->HasTangentsAndBitangents())
                 {
                         const auto& tangent = mesh->mTangents[i];
-                        tangents[i] = glm::vec3(tangent.x, tangent.y, tangent.z);
+                        vertices[i].tangent = Normal3<LocalSpace>(tangent.x, tangent.y, tangent.z);
 
                         const auto& bitangent = mesh->mBitangents[i];
-                        bitangents[i] = glm::vec3(bitangent.x, bitangent.y, bitangent.z);
+                        vertices[i].bitangent = Normal3<LocalSpace>(bitangent.x, bitangent.y, bitangent.z);
                 }
         }
 
-        centre = (min + max) / 2.0f;
+        // find the centre (midway between min and max)
+        const auto d = max - min;
+        centre = min + (d / 2);
 
-        materialIndex = mesh->mMaterialIndex;
+        materialIndex = mesh->mMaterialIndex + materialOffset;
 
         name = mesh->mName.data;
 
@@ -199,25 +260,25 @@ RawTexture::RawTexture(const std::filesystem::path& filepath, const std::filesys
         spdlog::trace("Loaded texture: {}", filepath.string());
 }
 
-RawMaterial::RawMaterial(const aiMaterial* material, aiTexture** textures, const std::filesystem::path& rootDir)
+RawMaterial::RawMaterial(const aiMaterial* material, const std::size_t indexOffset)
 {
         PROFILE_FUNCTION();
 
         aiString albedoTexturePath;
         material->GetTexture(aiTextureType_BASE_COLOR, 0, &albedoTexturePath);
 
+        // todo: come up with what I'm going to do with non-embeded textures ... die?
+
         if (albedoTexturePath.C_Str()[0] == '*')
         {
-                int index = std::atoi(albedoTexturePath.C_Str() + 1);
-                const aiTexture* texture = textures[index];
-
-                albedoTexture = std::make_unique<RawTexture>(texture);
+                albedoTextureIdx = std::atoi(albedoTexturePath.C_Str() + 1) + indexOffset;
+                hasAlbedoTexture = true;
         }
-        else if (!albedoTexturePath.Empty())
+        /*else if (!albedoTexturePath.Empty())
         {
                 albedoTexture = std::make_unique<RawTexture>(albedoTexturePath.C_Str(), rootDir);
-        }
-        else { albedoTexture = nullptr; }
+        }*/
+        else { hasAlbedoTexture = false; }
 
         aiColor3D baseColour(0.f, 0.f, 0.f);
         material->Get(AI_MATKEY_BASE_COLOR, baseColour);
@@ -229,16 +290,15 @@ RawMaterial::RawMaterial(const aiMaterial* material, aiTexture** textures, const
 
         if (metallicRoughnessPath.C_Str()[0] == '*')
         {
-                int index = std::atoi(metallicRoughnessPath.C_Str() + 1);
-                const aiTexture* texture = textures[index];
-
-                metallicRoughnessTexture = std::make_shared<const RawTexture>(texture);
+                metallicRoughnessTextureIdx = std::atoi(metallicRoughnessPath.C_Str() + 1) + indexOffset;
+                hasMetallicRoughnessTexture = true;
         }
-        else if (!metallicRoughnessPath.Empty())
-        {
-                metallicRoughnessTexture = std::make_shared<const RawTexture>(metallicRoughnessPath.C_Str(), rootDir);
-        }
-        else { metallicRoughnessTexture = nullptr; }
+        // else if (!metallicRoughnessPath.Empty())
+        //{
+        //         metallicRoughnessTexture = std::make_shared<const RawTexture>(metallicRoughnessPath.C_Str(),
+        //         rootDir);
+        // }
+        else { hasMetallicRoughnessTexture = false; }
 
         ai_real metallicFactor, roughnessFactor;
         material->Get(AI_MATKEY_METALLIC_FACTOR, metallicFactor);
@@ -251,16 +311,14 @@ RawMaterial::RawMaterial(const aiMaterial* material, aiTexture** textures, const
 
         if (normalPath.C_Str()[0] == '*')
         {
-                int index = std::atoi(normalPath.C_Str() + 1);
-                const aiTexture* texture = textures[index];
-
-                normalTexture = std::make_shared<const RawTexture>(texture);
+                normalTextureIdx = std::atoi(normalPath.C_Str() + 1) + indexOffset;
+                hasNormalTexture = true;
         }
-        else if (!normalPath.Empty())
-        {
-                normalTexture = std::make_shared<const RawTexture>(normalPath.C_Str(), rootDir);
-        }
-        else { normalTexture = nullptr; }
+        // else if (!normalPath.Empty())
+        //{
+        //         normalTexture = std::make_shared<const RawTexture>(normalPath.C_Str(), rootDir);
+        // }
+        else { hasNormalTexture = false; }
 
         // TODO: find a way to get this from ASSIMP if required...
         normalScale = 1.0f;

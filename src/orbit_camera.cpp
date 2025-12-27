@@ -1,6 +1,6 @@
 #include "orbit_camera.h"
 
-OrbitCamera::OrbitCamera(const glm::vec3& center, const glm::vec3& upVector, float radius, float minRadius,
+OrbitCamera::OrbitCamera(const Point3<WorldSpace>& center, const Vec3<WorldSpace>& upVector, float radius, float minRadius,
                          float azimuthAngle, float polarAngle)
     : center(center), upVector(upVector), radius(radius), minRadius(minRadius), azimuthAngle(azimuthAngle),
       polarAngle(polarAngle)
@@ -37,25 +37,25 @@ void OrbitCamera::zoom(const float delta)
 
 void OrbitCamera::moveHorizontal(const float distance)
 {
-        const glm::vec3 viewVector = getNormalizedViewVector();
-        const glm::vec3 strafeVector = glm::normalize(glm::cross(viewVector, upVector));
-        center += strafeVector * distance * radius;
+        const auto viewVector = getNormalizedViewVector();
+        const auto strafeVector = viewVector.cross(upVector).normalized();
+        center = center + (strafeVector * distance * radius);
 }
 
 void OrbitCamera::moveVertical(const float distance)
 {
-        const glm::vec3 viewVector = getNormalizedViewVector();
-        const glm::vec3 strafeVector = glm::normalize(glm::cross(viewVector, upVector));
-        const glm::vec3 relativeUp = glm::normalize(glm::cross(strafeVector, viewVector));
-        center += relativeUp * distance * radius;
+        const auto viewVector = getNormalizedViewVector();
+        const auto strafeVector = viewVector.cross(upVector).normalized();
+        const auto relativeUp = strafeVector.cross(viewVector).normalized();
+        center = center + (relativeUp * distance * radius);
 }
 
-const glm::mat4 OrbitCamera::getViewMatrix() const
+const WorldToView OrbitCamera::getViewTransform() const
 {
-        return glm::lookAt(getEye(), center, upVector);
+        return WorldToView(glm::lookAt(getEye().getv(), center.getv(), upVector.getv()));
 }
 
-const glm::vec3 OrbitCamera::getEye() const
+const Point3<WorldSpace> OrbitCamera::getEye() const
 {
         // Calculate sines / cosines of angles
         const auto sineAzimuth = sin(azimuthAngle);
@@ -63,10 +63,12 @@ const glm::vec3 OrbitCamera::getEye() const
         const auto sinePolar = sin(polarAngle);
         const auto cosinePolar = cos(polarAngle);
 
-        // Calculate eye position out of them
-        const auto x = center.x + (radius * cosinePolar * cosineAzimuth);
-        const auto y = center.y + (radius * sinePolar);
-        const auto z = center.z + (radius * cosinePolar * sineAzimuth);
+        const auto c = center.getv();
 
-        return glm::vec3(x, y, z);
+        // Calculate eye position out of them
+        const auto x = c.x + (radius * cosinePolar * cosineAzimuth);
+        const auto y = c.y + (radius * sinePolar);
+        const auto z = c.z + (radius * cosinePolar * sineAzimuth);
+
+        return Point3<WorldSpace>(x, y, z);
 }

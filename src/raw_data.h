@@ -12,6 +12,9 @@
 #include <span>
 #include <vector>
 
+#include "scene_graph.h"
+#include "transform.h"
+
 // So my thoughts are: load the assimp scene,
 // pass it with some index to various defined classes
 // move/take ownership of the data we need
@@ -22,7 +25,7 @@
 class RawMesh
 {
       public:
-        RawMesh(const aiMesh* mesh);
+        RawMesh(const aiMesh* mesh, const std::size_t materialOffset);
         ~RawMesh() = default;
 
         RawMesh(RawMesh&) = delete;
@@ -31,52 +34,56 @@ class RawMesh
         RawMesh(RawMesh&&) = delete;
         RawMesh& operator=(RawMesh&&) = delete;
 
+        struct Vertex
+        {
+                Point3<LocalSpace> position{};
+                glm::vec2 texCoord{};
+                Normal3<LocalSpace> normal{};
+                Normal3<LocalSpace> tangent{};
+                Normal3<LocalSpace> bitangent{};
+        };
+
+      private:
+        std::vector<uint32_t> indices;
+
+        std::vector<Vertex> vertices;
+
+        std::size_t materialIndex;
+
+        // Mesh Bounds
+        Point3<LocalSpace> max;
+        Point3<LocalSpace> min;
+        Point3<LocalSpace> centre;
+
+        std::string name;
+
+      public:
         const std::vector<uint32_t>& getIndices() const
         {
                 return indices;
         }
 
-        const std::vector<glm::vec3>& getPositions() const
+        const std::vector<Vertex> getVertices() const
         {
-                return positions;
+                return vertices;
         }
 
-        const std::vector<glm::vec2>& getTexCoords() const
-        {
-                return texCoords;
-        }
-
-        const std::vector<glm::vec3>& getNormals() const
-        {
-                return normals;
-        }
-
-        const std::vector<glm::vec3>& getTangents() const
-        {
-                return tangents;
-        }
-
-        const std::vector<glm::vec3>& getBitangents() const
-        {
-                return bitangents;
-        }
-
-        uint32_t getMaterialIndex() const
+        std::size_t getMaterialIndex() const
         {
                 return materialIndex;
         }
 
-        const glm::vec3& getMin() const
+        const Point3<LocalSpace>& getMin() const
         {
                 return min;
         }
 
-        const glm::vec3& getMax() const
+        const Point3<LocalSpace>& getMax() const
         {
                 return max;
         }
 
-        const glm::vec3& getCentre() const
+        const Point3<LocalSpace>& getCentre() const
         {
                 return centre;
         }
@@ -85,24 +92,6 @@ class RawMesh
         {
                 return name;
         }
-
-      private:
-        std::vector<uint32_t> indices;
-
-        std::vector<glm::vec3> positions;
-        std::vector<glm::vec2> texCoords;
-        std::vector<glm::vec3> normals;
-        std::vector<glm::vec3> tangents;
-        std::vector<glm::vec3> bitangents;
-
-        uint32_t materialIndex;
-
-        // Mesh Bounds
-        glm::vec3 max;
-        glm::vec3 min;
-        glm::vec3 centre;
-
-        std::string name;
 };
 
 class RawTexture
@@ -148,19 +137,19 @@ class RawTexture
 class RawMaterial
 {
       public:
-        RawMaterial(const aiMaterial* material, aiTexture** textures, const std::filesystem::path& rootDir = "");
+        RawMaterial(const aiMaterial* material, const std::size_t indexOffset);
         ~RawMaterial() = default;
 
         // ALBEDO
 
-        bool hasAlbedoTexture() const
+        bool getHasAlbedoTexture() const
         {
-                return (albedoTexture != nullptr);
+                return hasAlbedoTexture;
         }
 
-        std::shared_ptr<const RawTexture> getAlbedoTexture() const
+        auto getAlbedoTextureIdx() const
         {
-                return albedoTexture;
+                return albedoTextureIdx;
         }
 
         const glm::vec4& getAlbedoFactor() const
@@ -170,14 +159,14 @@ class RawMaterial
 
         // METALLIC ROUGHNESS
 
-        bool hasMetallicRoughnessTexture() const
+        bool getHasMetallicRoughnessTexture() const
         {
-                return (metallicRoughnessTexture != nullptr);
+                return hasMetallicRoughnessTexture;
         }
 
-        std::shared_ptr<const RawTexture> getMetallicRoughnessTexture() const
+        auto getMetallicRoughnessTextureIdx() const
         {
-                return metallicRoughnessTexture;
+                return metallicRoughnessTextureIdx;
         }
 
         const glm::vec4& getMetallicRoughnessFactor() const
@@ -187,14 +176,14 @@ class RawMaterial
 
         // NORMAL
 
-        bool hasNormalTexture() const
+        bool getHasNormalTexture() const
         {
-                return (normalTexture != nullptr);
+                return hasNormalTexture;
         }
 
-        auto getNormalTexture() const
+        auto getNormalTextureIdx() const
         {
-                return normalTexture;
+                return normalTextureIdx;
         }
 
         auto getNormalScale() const
@@ -204,18 +193,20 @@ class RawMaterial
 
         bool isTranslucent() const
         {
-                if (!albedoTexture) { return albedoFactor.a < 1.0f; }
-                return albedoTexture->getChannels() == 4;
+                return albedoFactor.a < 1.0f;
         }
 
       private:
-        std::shared_ptr<const RawTexture> albedoTexture;
+        bool hasAlbedoTexture;
+        std::size_t albedoTextureIdx;
         glm::vec4 albedoFactor;
 
-        std::shared_ptr<const RawTexture> metallicRoughnessTexture;
+        bool hasMetallicRoughnessTexture;
+        std::size_t metallicRoughnessTextureIdx;
         glm::vec4 metallicRoughnessFactor;
 
-        std::shared_ptr<const RawTexture> normalTexture;
+        bool hasNormalTexture;
+        std::size_t normalTextureIdx;
         float normalScale;
 };
 
@@ -227,7 +218,7 @@ class RawMaterial
 class RawScene
 {
       public:
-        RawScene();
+        RawScene(SceneGraph& sceneGraph);
         ~RawScene() = default;
 
         void addFile(const std::filesystem::path& filePath);
@@ -242,7 +233,18 @@ class RawScene
                 return materials;
         }
 
+        const std::vector<std::shared_ptr<RawTexture>>& getTextures() const
+        {
+                return textures;
+        }
+
       private:
+        glm::mat4 aiMatrixtoGLM(const aiMatrix4x4& aiMatrix);
+        void processNode(aiNode* aiNode, std::shared_ptr<SceneNode> parentNode = nullptr);
+
+        SceneGraph& sceneGraph;
+
         std::vector<std::shared_ptr<RawMesh>> meshes;
         std::vector<std::shared_ptr<RawMaterial>> materials;
+        std::vector<std::shared_ptr<RawTexture>> textures;
 };
