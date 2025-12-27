@@ -25,6 +25,7 @@
 #include "simple_renderer.h"
 #include "timer.h"
 #include "window.h"
+#include "pbr_renderer.h"
 
 #include <numbers>
 
@@ -46,12 +47,13 @@ int main()
         {
                 GLFWContext glfwContext;
 
-                WindowFlags flags;
-                flags.startMaximized = false;
-                flags.resizable = true;
-                flags.samples = 8;
+                WindowCreationFlags flags;
+                flags.fullscreen = true;
+                flags.width = 0;
+                flags.height = 0;
+                flags.title = std::format("-- graphics engine (built: {}@{}) --", __DATE__, __TIME__);
 
-                Window window(glfwContext, 1280, 720, "-- graphics_engine --", flags);
+                Window window(glfwContext, flags);
 
                 GLContext glContext(window);
 
@@ -64,15 +66,15 @@ int main()
                 input.defineAction("zoom", {}, {GLFW_MOUSE_BUTTON_2});
                 input.defineAction("pan", {GLFW_KEY_LEFT_SHIFT});
 
-                OrbitCamera orbitCamera(glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f), 1.0f, 0.01f);
+                std::shared_ptr<OrbitCamera> orbitCamera = std::make_shared<OrbitCamera>(glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f), 1.0f, 0.01f);
 
-                std::unique_ptr<SimpleRenderer> renderer;
+                std::unique_ptr<PBRRenderer> renderer;
 
                 {
                         RawScene scene;
                         scene.addFile("test_models/Sponza/glTF/Sponza.gltf");
 
-                        renderer = std::make_unique<SimpleRenderer>(glContext, scene, orbitCamera, timer);
+                        renderer = std::make_unique<PBRRenderer>(glContext, scene, orbitCamera);
                 }
 
 #ifndef NDEBUG
@@ -104,14 +106,14 @@ int main()
 
                                 if (input.getAction("pan"))
                                 {
-                                        orbitCamera.moveHorizontal(-mouseOffset.x * 10.0f);
-                                        orbitCamera.moveVertical(mouseOffset.y * 10.0f);
+                                        orbitCamera->moveHorizontal(-mouseOffset.x * 10.0f);
+                                        orbitCamera->moveVertical(mouseOffset.y * 10.0f);
                                 }
                                 else
                                 {
-                                        orbitCamera.rotateAzimuth(mouseOffset.x * static_cast<float>(std::numbers::pi) *
+                                        orbitCamera->rotateAzimuth(mouseOffset.x * static_cast<float>(std::numbers::pi) *
                                                                   2.0f);
-                                        orbitCamera.rotatePolar(mouseOffset.y * static_cast<float>(std::numbers::pi) *
+                                        orbitCamera->rotatePolar(mouseOffset.y * static_cast<float>(std::numbers::pi) *
                                                                 2.0f);
                                 }
                         }
@@ -119,12 +121,12 @@ int main()
                         {
                                 const glm::vec2 mouseOffset = input.getMouseOffset();
 
-                                orbitCamera.zoom(mouseOffset.y * 10.0f);
+                                orbitCamera->zoom(mouseOffset.y * 10.0f);
                         }
 
                         glfwContext.pollEvents();
 
-                        renderer->render();
+                        renderer->frame();
 
 #ifndef NDEBUG
                         imguiContext.draw();
@@ -133,7 +135,7 @@ int main()
                         window.swapBuffers();
                 }
         }
-        catch (const std::exception& e)
+        catch (const std::runtime_error& e)
         {
                 spdlog::critical(e.what());
                 return EXIT_FAILURE;

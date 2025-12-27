@@ -1,82 +1,28 @@
-#include "forwardRenderPass.h"
+#include "forward_render_pass.h"
 
-ForwardRenderPass::ForwardRenderPass(RenderContext& frameDesc)
-	: RenderPass(frameDesc)
+ForwardRenderPass::ForwardRenderPass(GLContext& context, RenderContext& frameDesc)
+    : RenderPass(context, frameDesc),
+      forwardPassShader(glContext, {std::make_shared<GLShader>(glContext, "shaders/forward_pass/forward_pass.vert.glsl",
+                                                               gl::GLenum::GL_VERTEX_SHADER),
+                                    std::make_shared<GLShader>(glContext, "shaders/forward_pass/forward_pass.frag.glsl",
+                                                               gl::GLenum::GL_FRAGMENT_SHADER)})
 {
-	forwardPassShader.addShader(GL_VERTEX_SHADER, "shaders/forward_pass/forward_pass.vert.glsl");
-	forwardPassShader.addShader(GL_FRAGMENT_SHADER, "shaders/forward_pass/forward_pass.frag.glsl");
+        const auto& objectMatricesBuffer = renderContext.globalBuffers.at("ObjectBuffer");
+        objectMatricesBuffer->bindBase(gl::GLenum::GL_UNIFORM_BUFFER, 0);
+        forwardPassShader.setUniformBlockBinding("ObjectBuffer", 0);
+
+        const auto& frameUniformsBuffer = renderContext.globalBuffers.at("FrameUniformsBuffer");
+        frameUniformsBuffer->bindBase(gl::GLenum::GL_UNIFORM_BUFFER, 1);
+        forwardPassShader.setUniformBlockBinding("FrameUniformsBuffer", 1);
+
+        const auto& pointLightBuffer = renderContext.globalBuffers.at("PointLightBuffer");
+        pointLightBuffer->bindBase(gl::GLenum::GL_SHADER_STORAGE_BUFFER, 0);
+        forwardPassShader.setShaderStorageBlockBinding("PointLightBuffer", 0);
 }
 
-void ForwardRenderPass::frame()
+void ForwardRenderPass::frameExecute()
 {
-	forwardPassShader.use();
-	renderContext.buffers.bindBuffers(forwardPassShader);
-
-	if (renderContext.flags[SHADOWS_ENABLED])
-	{
-		glActiveTexture(GL_TEXTURE5);
-		glBindTexture(GL_TEXTURE_CUBE_MAP_ARRAY, renderContext.textures.at("pointShadowMaps"));
-
-		forwardPassShader.setInt("uPointShadowMaps", 5);
-
-		glActiveTexture(GL_TEXTURE6);
-		glBindTexture(GL_TEXTURE_2D_ARRAY, renderContext.textures.at("directionalShadowMaps"));
-
-		forwardPassShader.setInt("uDirectionalShadowMaps", 6);
-	}
-
-	if (renderContext.flags[ENVIRONMENT_MAP_ENABLED])
-	{
-		glActiveTexture(GL_TEXTURE7);
-		glBindTexture(GL_TEXTURE_CUBE_MAP, renderContext.textures.at("irradianceMap"));
-
-		forwardPassShader.setInt("uIrradianceMap", 7);
-
-		glActiveTexture(GL_TEXTURE8);
-		glBindTexture(GL_TEXTURE_CUBE_MAP, renderContext.textures.at("prefilteredMap"));
-
-		forwardPassShader.setInt("uPrefilteredMap", 8);
-
-		glActiveTexture(GL_TEXTURE9);
-		glBindTexture(GL_TEXTURE_2D, renderContext.textures.at("brdf"));
-
-		forwardPassShader.setInt("uBRDF", 9);
-	}
-
-	// Render opaque primitives - only if there is no deferred pass running
-	if (!renderContext.flags[DEFERRED_PASS_ENABLED])
-	{
-		for (size_t i = 0; i < renderContext.scene->sceneModels.size(); i++)
-		{
-			loadJoints(renderContext.scene->sceneModels[i]);
-
-			for (const auto& prim : renderContext.scene->sceneModels[i]->getOpaquePrimitives())
-			{
-				parseMaterialProperties(renderContext.scene->sceneModels[i]->getTextures(), prim->materialDesc);
-
-				renderPrimitive(prim);
-			}
-		}
-	}
-
-	// Enable blending and render the translucent primitives
-
-	glEnable(GL_BLEND);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-	for (size_t i = 0; i < renderContext.scene->sceneModels.size(); i++)
-	{
-		loadJoints(renderContext.scene->sceneModels[i]);
-
-		for (const auto& prim : renderContext.scene->sceneModels[i]->getTranslucentPrimitives())
-		{
-			parseMaterialProperties(renderContext.scene->sceneModels[i]->getTextures(), prim->materialDesc);
-
-			renderPrimitive(prim);
-		}
-	}
-
-	glDisable(GL_BLEND);
+        renderContext.drawScene(forwardPassShader);
 }
 
 void ForwardRenderPass::refresh()

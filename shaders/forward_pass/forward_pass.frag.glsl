@@ -5,27 +5,6 @@
 #include "../pbr_functions.glsl"
 #include "../pbr.glsl"
 
-// https://knarkowicz.wordpress.com/2016/01/06/aces-filmic-tone-mapping-curve/
-vec3 ACESFilm(vec3 x)
-{
-    float a = 2.51f;
-    float b = 0.03f;
-    float c = 2.43f;
-    float d = 0.59f;
-    float e = 0.14f;
-    return clamp((x * (a * x + b)) / (x * (c * x + d) + e), 0.0, 1.0);
-}
-
-// Converts a color from linear light gamma to sRGB gamma
-vec3 fromLinear(vec3 linearRGB)
-{
-    bvec3 cutoff = lessThan(linearRGB.rgb, vec3(0.0031308));
-    vec3 higher = vec3(1.055) * pow(linearRGB.rgb, vec3(1.0 / 2.4)) - vec3(0.055);
-    vec3 lower = linearRGB.rgb * vec3(12.92);
-
-    return mix(higher, lower, cutoff);
-}
-
 in VS_OUT
 {
 	vec3 worldPos;
@@ -44,7 +23,7 @@ void main()
 		baseColour *= texture(uBaseColour.textureMap, fs_in.texCoords);
 	}
 
-	if (baseColour.a < 0.5) { discard; }
+	if (baseColour.a < 0.01) { discard; }
 
 	float roughness = uMetallicRoughness.factor.g;
 	float metalMask = uMetallicRoughness.factor.b;
@@ -104,8 +83,5 @@ void main()
 		Lo = mix(Lo, Lo * texture(uOcclusionMap.textureMap, fs_in.texCoords).r, uOcclusionMap.factor.r);
 	}
 
-	vec3 colour = ACESFilm(Lo);
-	colour = fromLinear(Lo);
-
-	vFragColour = vec4(colour, baseColour.a);
+	vFragColour = vec4(Lo, baseColour.a);
 }

@@ -104,3 +104,4 @@ GLContext::GLContext(const Window& window) : windowRef(window)
 
         enable(gl::GLenum::GL_MULTISAMPLE);
 }
+

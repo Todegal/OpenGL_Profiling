@@ -37,17 +37,20 @@ class SimpleRenderer
                 {
                 }
 
-                std::unique_ptr<GLImmutableBuffer> vbo;
-                std::unique_ptr<GLImmutableBuffer> ebo;
+                std::unique_ptr<GLBuffer> vbo;
+                std::unique_ptr<GLBuffer> ebo;
                 GLVertexArray vao;
 
                 std::size_t vertexCount;
 
-                gl::GLuint albedoTexture;
+                std::unique_ptr<GLTexture2D> albedoTexture;
                 glm::vec4 albedoFactor;
 
-                gl::GLuint metallicRoughnessTexture;
+                std::unique_ptr<GLTexture2D> metallicRoughnessTexture;
                 glm::vec4 metallicRoughnessFactor;
+
+                std::unique_ptr<GLTexture2D> normalTexture;
+                float normalScale;
         };
 
         std::vector<std::shared_ptr<Mesh>> meshes;
@@ -59,15 +62,15 @@ class SimpleRenderer
                 glm::mat4 projectionMatrix;
                 glm::mat4 viewMatrix;
                 glm::vec3 cameraPosition;
-                // float p0;
-                // glm::vec4 cascadePlanes;
-                // float shadowNearPlane;
-                // float shadowFarPlane;
+                float p0;
+                glm::vec4 cascadePlanes;
+                float shadowNearPlane;
+                float shadowFarPlane;
                 int numPointLights;
                 int numDirectionalLights;
         } frameUniforms;
 
-        std::unique_ptr<GLImmutableBuffer> frameUniformsBuffer;
+        std::unique_ptr<GLBuffer> frameUniformsBuffer;
 
         struct ObjectMatrices
         {
@@ -75,7 +78,7 @@ class SimpleRenderer
                 glm::mat3x4 normalMatrix;
         } objectMatrices;
 
-        std::unique_ptr<GLImmutableBuffer> objectMatricesBuffer;
+        std::unique_ptr<GLBuffer> objectMatricesBuffer;
 
         struct PointLight
         {
@@ -84,5 +87,14 @@ class SimpleRenderer
         };
 
         std::vector<PointLight> pointLights;
-        std::unique_ptr<GLMutableBuffer> pointLightBuffer;
+        std::unique_ptr<GLBuffer> pointLightBuffer;
+
+        // HDR Pass Stuff - ONLY PASS, then refactor pls
+        gl::GLuint hdrFramebuffer;
+        gl::GLuint hdrTexture;
+
+        GLShaderProgram hdrShaderProgram;
+
+        std::unique_ptr<GLBuffer> fullscreenTriBuffer;
+        std::unique_ptr<GLVertexArray> fullscreenTriVAO;
 };

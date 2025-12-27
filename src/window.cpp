@@ -31,7 +31,7 @@ void GLFWContext::pollEvents()
         glfwPollEvents();
 }
 
-Window::Window(const GLFWContext&, int startWidth, int startHeight, std::string title, const WindowFlags& flags)
+Window::Window(const GLFWContext&, const WindowCreationFlags& flags)
 {
         PROFILE_FUNCTION();
 
@@ -43,8 +43,30 @@ Window::Window(const GLFWContext&, int startWidth, int startHeight, std::string 
 
         glfwWindowHint(GLFW_SRGB_CAPABLE, GLFW_TRUE);
 
+        const auto& monitor = glfwGetPrimaryMonitor();
+        const auto& vidMode = glfwGetVideoMode(monitor);
+
+        glfwWindowHint(GLFW_BLUE_BITS, vidMode->blueBits);
+        glfwWindowHint(GLFW_RED_BITS, vidMode->redBits);
+        glfwWindowHint(GLFW_GREEN_BITS, vidMode->greenBits);
+        glfwWindowHint(GLFW_REFRESH_RATE, vidMode->refreshRate);
+
+        std::size_t width = flags.width;
+        std::size_t height = flags.height;
+
+        if (flags.fullscreen)
+        {
+                if (width == 0 || height == 0)
+                {
+                        width = vidMode->width;
+                        height = vidMode->height;
+                }
+        }
+        else if (width == 0 || height == 0) { throw std::runtime_error("Width and Height must be positive integers"); }
+
         GLFWwindow_Deleter windowDeleter;
-        windowPtr = GLFWUniqueWindowPtr(glfwCreateWindow(startWidth, startHeight, title.c_str(), nullptr, nullptr),
+        windowPtr = GLFWUniqueWindowPtr(glfwCreateWindow(static_cast<int>(width), static_cast<int>(height),
+                                                         flags.title.c_str(), flags.fullscreen ? monitor : nullptr, nullptr),
                                         windowDeleter);
         if (windowPtr == nullptr)
         {
@@ -52,7 +74,7 @@ Window::Window(const GLFWContext&, int startWidth, int startHeight, std::string 
                 throw std::runtime_error("Failed to create window!");
         }
 
-        if (flags.startMaximized) { glfwMaximizeWindow(windowPtr.get()); }
+        if (flags.maximized) { glfwMaximizeWindow(windowPtr.get()); }
 }
 
 Window::~Window()

@@ -1,165 +1,81 @@
-#include "pbrRenderer.h"
-#include "forwardRenderPass.h"
-#include "hdrRenderPass.h"
+#include "pbr_renderer.h"
 
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
-PBRRenderer::PBRRenderer(glm::ivec2 screenSize, std::shared_ptr<Camera> camera)
-	: renderContext()
+PBRRenderer::PBRRenderer(GLContext& context, const RawScene& initialScene, std::shared_ptr<Camera> initialCamera)
+    : glContext(context), renderContext(context, initialScene, initialCamera)
 {
-	renderContext.nearPlane = 0.001f;
-	renderContext.farPlane = 100.0f;
-	renderContext.dimensions = screenSize;
-	renderContext.scene = std::make_shared<Scene>();
+        // define uniform buffers
+        renderContext.globalBuffers["ObjectBuffer"] = std::make_unique<GLBuffer>(
+            glContext, sizeof(RenderContext::ObjectMatrices), gl::BufferStorageMask::GL_DYNAMIC_STORAGE_BIT);
 
-	this->camera = camera;
+        renderContext.globalBuffers["FrameUniformsBuffer"] = std::make_unique<GLBuffer>(
+            glContext, sizeof(RenderContext::FrameUniforms), gl::BufferStorageMask::GL_DYNAMIC_STORAGE_BIT);
 
-	renderContext.flags[RenderFlags::NORMALS_ENABLED] = true;
-	renderContext.flags[RenderFlags::OCCLUSION_ENABLED] = true;
-	renderContext.flags[RenderFlags::SHADOWS_ENABLED] = false;
-	renderContext.flags[RenderFlags::ENVIRONMENT_MAP_ENABLED] = false;
-	renderContext.flags[RenderFlags::EMULATE_SUN_ENABLED] = false;
-	renderContext.flags[RenderFlags::DEFERRED_PASS_ENABLED] = false;
-	renderContext.flags[RenderFlags::HDR_PASS_ENABLED] = false;
+        // setup lights
+        renderContext.pointLights.resize(4);
 
-	forwardPass = std::make_shared<ForwardRenderPass>(renderContext);
-	hdrPass = std::make_shared<HDRRenderPass>(renderContext);	
+        renderContext.pointLights[0].radiance = glm::vec4(10.0f, 0.0f, 0.0f, 0.0f);
+        renderContext.pointLights[0].position = glm::vec4(2.0f, 1.0f, 0.0f, 0.0f);
 
-	renderPasses.resize(NUM_PASSES);
-	renderPasses[FORWARD_PASS] = forwardPass;
-	renderPasses[HDR_PASS] = hdrPass;
+        renderContext.pointLights[1].radiance = glm::vec4(0.0f, 10.0f, 0.0f, 0.0f);
+        renderContext.pointLights[1].position = glm::vec4(0.0f, 3.0f, 0.0f, 0.0f);
 
-	// create the required uniform buffers
-	renderContext.buffers.addBuffer("flags", GL_UNIFORM_BUFFER, "FlagsBuffer");
-	renderContext.buffers.addBuffer("frame_uniforms", GL_UNIFORM_BUFFER, "FrameUniformsBuffer");
-	renderContext.buffers.addBuffer("point_lights", GL_SHADER_STORAGE_BUFFER, "PointLightBuffer");
-	renderContext.buffers.addBuffer("directional_lights", GL_SHADER_STORAGE_BUFFER, "DirectionalLightBuffer");
-	renderContext.buffers.addBuffer("joints", GL_SHADER_STORAGE_BUFFER, "JointsBuffer");
-	renderContext.buffers.addBuffer("object", GL_UNIFORM_BUFFER, "ObjectBuffer");
-}
+        renderContext.pointLights[2].radiance = glm::vec4(0.0f, 0.0f, 10.0f, 0.0f);
+        renderContext.pointLights[2].position = glm::vec4(0.0f, 1.0f, 2.0f, 0.0f);
 
-PBRRenderer::~PBRRenderer()
-{
-	for (auto t : renderContext.textures)
-	{
-		glDeleteTextures(1, &t.second);
-	}
-}
+        renderContext.pointLights[3].radiance = glm::vec4(5.0f, 5.0f, 5.0f, 0.0f);
+        renderContext.pointLights[3].position = glm::vec4(0.0f, 1.0f, 0.0f, 0.0f);
 
-void PBRRenderer::loadScene(std::shared_ptr<Scene> scene)
-{
-	renderContext.scene = scene;
-}
+        renderContext.globalBuffers["PointLightBuffer"] = std::make_unique<GLBuffer>(
+            glContext, sizeof(renderContext.pointLights[0]) * renderContext.pointLights.size(),
+            gl::BufferStorageMask::GL_DYNAMIC_STORAGE_BIT);
 
-void PBRRenderer::clearScene()
-{
-	renderContext.scene = std::make_shared<Scene>();
-}
+        renderContext.globalBuffers.at("PointLightBuffer")
+            ->subData<RenderContext::PointLight>(0, renderContext.pointLights);
 
-void PBRRenderer::setCamera(std::shared_ptr<Camera> camera)
-{
-	this->camera = camera;
-}
-
-void PBRRenderer::resize(glm::ivec2 screenSize)
-{
-	renderContext.dimensions = screenSize;
-
-	for (auto& pass : renderPasses)
-	{
-		pass->refresh();
-	}
-}
-
-void PBRRenderer::imguiFrame(imgui_data& data)
-{
-	int windowFlags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize;
-	if (!ImGui::Begin("-- PBR Renderer --", &data.showRenderDialog, windowFlags))
-	{
-		ImGui::End();
-		return;
-	}
-
-	ImGui::Text("NEW RENDERER!");
-
-	ImGui::Separator();
-
-	ImGui::Text("Flags");
-	ImGui::Checkbox("HDR Pass Enabled", &renderContext.flags[RenderFlags::HDR_PASS_ENABLED]);
-
-	ImGui::End();
+        // declare passes
+        forwardPass = std::make_unique<ForwardRenderPass>(context, renderContext);
+        hdrPass = std::make_unique<HDRRenderPass>(context, renderContext);
 }
 
 void PBRRenderer::frame()
 {
-	{
-		ScopedFramebufferBind framebufferBind(renderContext.framebufferStack,
-			renderContext.flags[HDR_PASS_ENABLED] ? hdrPass->getFramebuffer() : 0);
+        const auto& screenDimensions = glContext.getWindow().getFramebufferSize();
 
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        renderContext.frameUniforms.projectionMatrix = glm::perspective(
+            glm::radians(renderContext.camera->getFov()),
+            static_cast<float>(screenDimensions.x) / static_cast<float>(screenDimensions.y), 0.01f, 100000.0f);
+        renderContext.frameUniforms.viewMatrix = renderContext.camera->getViewMatrix();
+        renderContext.frameUniforms.cameraPosition = renderContext.camera->getEye();
+        renderContext.frameUniforms.numPointLights = static_cast<int>(renderContext.pointLights.size());
 
-		glViewport(0, 0, renderContext.dimensions.x, renderContext.dimensions.y);
+        renderContext.globalBuffers.at("FrameUniformsBuffer")
+            ->subData<RenderContext::FrameUniforms>(0, std::span(&renderContext.frameUniforms, 1));
 
-		buildBuffers();
+        gl::glBindFramebuffer(gl::GL_DRAW_FRAMEBUFFER, renderContext.framebuffer);
 
-		forwardPass->frame();
-	}
+        forwardPass->frameStart();
+        hdrPass->frameStart();
 
-	glViewport(0, 0, renderContext.dimensions.x, renderContext.dimensions.y);
+        const static auto clearColour = glm::vec4(glm::vec3(0.0f), 1.0f);
+        const static auto clearDepth = 1.0f;
 
-	if (renderContext.flags[HDR_PASS_ENABLED])
-	{ hdrPass->frame(); }
-}
+        glContext.enable(gl::GLenum::GL_CULL_FACE);
+        glContext.enable(gl::GLenum::GL_DEPTH_TEST);
 
-void PBRRenderer::buildBuffers()
-{
-	std::vector<PointLight> pointLights;
-	std::vector<DirectionalLight> directionalLights;
+        gl::glViewport(0, 0, screenDimensions.x, screenDimensions.y);
 
-	for (const auto& light : renderContext.scene->sceneLights)
-	{
-		if (light.type == Light::LIGHT_TYPE::POINT)
-		{
-			pointLights.push_back(
-				{
-					glm::vec4(light.position, 1.0f),
-					glm::vec4(light.colour, light.strength)
-				}
-			);
-		}
-		else if (light.type == Light::LIGHT_TYPE::DIRECTIONAL)
-		{
-			directionalLights.push_back(
-				{
-					glm::vec4(light.position, 0.0f),
-					glm::vec4(light.colour, light.strength)
-					// todo: calculate cascade light space matrices
-				}
-			);
-		}
-	}
+        gl::glClearNamedFramebufferfv(renderContext.framebuffer, gl::GLenum::GL_COLOR, 0, glm::value_ptr(clearColour));
+        gl::glClearNamedFramebufferfv(renderContext.framebuffer, gl::GLenum::GL_DEPTH, 0, &clearDepth);
 
-	std::array<uint32_t, RenderFlags::NUM_FLAGS> spacedFlags;
-	for (int i = 0; i < RenderFlags::NUM_FLAGS; i++) spacedFlags[i] = static_cast<uint32_t>(renderContext.flags[i]);
+        forwardPass->frameExecute();
+        hdrPass->frameExecute();
 
-	renderContext.buffers.bufferData("flags", sizeof(uint32_t) * RenderFlags::NUM_FLAGS, spacedFlags.data());
-
-	FrameUniforms frameUniforms = { };
-
-	frameUniforms.projectionMatrix = glm::perspective(
-		glm::radians(camera->getFov()),
-		static_cast<float>(renderContext.dimensions.x) / static_cast<float>(renderContext.dimensions.y),
-		renderContext.nearPlane, renderContext.farPlane);
-
-	frameUniforms.viewMatrix = camera->getViewMatrix();
-	frameUniforms.cameraPosition = camera->getEye();
-	frameUniforms.directionalShadowCascadePlanes = { 0.05f, 0.1f, 0.25f, 0.5f }; // todo: add cascade shadow planes
-	frameUniforms.pointShadowNearPlane = renderContext.nearPlane;
-	frameUniforms.pointShadowFarPlane = renderContext.farPlane;
-	frameUniforms.numPointLights = static_cast<int>(pointLights.size());
-	frameUniforms.numDirectionalLights = static_cast<int>(directionalLights.size());
-
-	renderContext.buffers.bufferData("frame_uniforms", sizeof(FrameUniforms), &frameUniforms);
-	renderContext.buffers.bufferData("point_lights", sizeof(PointLight) * pointLights.size(), pointLights.data());
-	renderContext.buffers.bufferData("directional_lights", sizeof(DirectionalLight) * directionalLights.size(), directionalLights.data());
+        // present to default framebuffer
+        gl::glBlitNamedFramebuffer(renderContext.framebuffer, 0, 0, 0, screenDimensions.x, screenDimensions.y, 0, 0,
+                                   screenDimensions.x, screenDimensions.y,
+                                   gl::ClearBufferMask::GL_COLOR_BUFFER_BIT | gl::ClearBufferMask::GL_DEPTH_BUFFER_BIT,
+                                   gl::GLenum::GL_NEAREST);
 }

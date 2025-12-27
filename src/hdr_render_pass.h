@@ -1,25 +1,18 @@
 #pragma once
 
-#include "renderPass.h"
+#include "render_pass.h"
 
 class HDRRenderPass : public RenderPass
 {
-public:
-	HDRRenderPass(RenderContext& renderContext);
+      public:
+        HDRRenderPass(GLContext& context, RenderContext& renderContext);
 
-public:
-	// Inherited via RenderPass
-	void frame() override;
-	void refresh() override;
+      public:
+        // Inherited via RenderPass
+        void frameStart() override;
+        void frameExecute() override;
+        void refresh() override;
 
-	GLuint getFramebuffer() const { return framebuffer; }
-
-private:
-	ShaderProgram hdrPassShader;
-
-	GLuint framebuffer;
-	GLuint depthRenderBuffer;
-	GLuint colourTexture;
-
-	const std::shared_ptr<RenderableModel> quad;
+      private:
+        GLShaderProgram hdrPassShader;
 };

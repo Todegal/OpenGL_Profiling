@@ -21,6 +21,7 @@
 #include <spdlog/spdlog.h>
 
 #include "profiler.h"
+#include "raw_data.h"
 #include "window.h"
 
 #include <span>
@@ -69,149 +70,9 @@ class GLContext
 class GLBuffer
 {
       public:
-        GLBuffer() = default;
-        // ~GLBuffer() = delete;
+        GLBuffer() = delete;
 
-        GLBuffer(const GLBuffer&) = delete;
-        GLBuffer& operator=(const GLBuffer&) = delete;
-        GLBuffer(GLBuffer&& other) = delete;
-        GLBuffer& operator=(GLBuffer&&) = delete;
-
-        virtual void bind(gl::GLenum target) = 0;
-        virtual void bindBase(gl::GLenum target, gl::GLuint base) = 0;
-
-        gl::GLuint getID() const
-        {
-                return bufferID;
-        }
-
-        size_t getAllocatedSize() const
-        {
-                return allocatedSizeBytes;
-        }
-
-      protected:
-        size_t allocatedSizeBytes = 0;
-        gl::GLuint bufferID = 0;
-};
-
-class GLMutableBuffer : public GLBuffer
-{
-      public:
-        GLMutableBuffer() = delete;
-
-        template <typename T>
-        GLMutableBuffer(const GLContext&, std::span<const T> data, gl::GLenum usage)
-        {
-                static_assert(std::is_trivially_copyable_v<T>, "Buffer data must be copyable!");
-
-                allocatedSizeBytes = data.size() * sizeof(T);
-
-                gl::glCreateBuffers(1, &bufferID);
-                gl::glNamedBufferData(bufferID, static_cast<gl::GLsizeiptr>(allocatedSizeBytes), data.data(), usage);
-
-                spdlog::trace("Created mutable buffer: {}, with {} bytes", bufferID, allocatedSizeBytes);
-        }
-
-        GLMutableBuffer(const GLContext&, std::size_t sizeBytes, gl::GLenum usage)
-        {
-                allocatedSizeBytes = sizeBytes;
-
-                gl::glCreateBuffers(1, &bufferID);
-                gl::glNamedBufferData(bufferID, static_cast<gl::GLsizeiptr>(allocatedSizeBytes), nullptr, usage);
-
-                spdlog::trace("Created mutable buffer: {}, with {} bytes", bufferID, allocatedSizeBytes);
-        }
-
-        ~GLMutableBuffer()
-        {
-                gl::glDeleteBuffers(1, &bufferID);
-                spdlog::trace("Destroyed Buffer: {}", bufferID);
-        }
-
-        // Uncopyable & unmovable,
-        // I'm still torn on this but I HATE
-        // the idea of a random uninitialized buffer
-        // just existing, it kills me. So no move/copy
-        GLMutableBuffer(const GLMutableBuffer&) = delete;
-        GLMutableBuffer& operator=(const GLMutableBuffer&) = delete;
-        GLMutableBuffer(GLMutableBuffer&& other) = delete;
-        GLMutableBuffer& operator=(GLMutableBuffer&&) = delete;
-
-        virtual void bind(gl::GLenum target) override
-        {
-                glBindBuffer(target, bufferID);
-        }
-
-        virtual void bindBase(gl::GLenum target, gl::GLuint base) override
-        {
-                glBindBufferBase(target, base, bufferID);
-        }
-
-        template <typename T>
-        void setData(std::span<const T> data, gl::GLenum usage)
-        {
-                static_assert(std::is_trivially_copyable<T>::value, "Buffer data must be copyable!");
-
-                allocatedSizeBytes = data.size() * sizeof(T);
-
-                gl::glNamedBufferData(bufferID, static_cast<gl::GLsizeiptr>(allocatedSizeBytes), data.data(), usage);
-        }
-
-        template <typename T>
-        void subData(gl::GLintptr offsetBytes, std::span<const T> data)
-        {
-                static_assert(std::is_trivially_copyable<T>::value, "Buffer data must be copyable!");
-
-                const size_t dataSizeBytes = sizeof(T) * data.size();
-                if (offsetBytes + dataSizeBytes > allocatedSizeBytes)
-                {
-                        throw std::runtime_error("Cannot sub data into an undersized buffer!");
-                }
-
-                gl::glNamedBufferSubData(bufferID, offsetBytes, static_cast<gl::GLsizeiptr>(data.size() * sizeof(T)),
-                                         data.data());
-        }
-
-        template <typename T = std::byte>
-        T* map(gl::GLenum access)
-        {
-                return static_cast<T*>(gl::glMapNamedBuffer(bufferID, access));
-        }
-
-        template <typename T = std::byte>
-        T* mapRange(gl::GLsizeiptr offset, gl::GLsizeiptr length, gl::BufferAccessMask access)
-        {
-                if (offset + length > allocatedSizeBytes) {}
-                return static_cast<T*>(gl::glMapNamedBufferRange(bufferID, offset, length, access));
-        }
-
-        void unmap()
-        {
-                gl::glUnmapNamedBuffer(bufferID);
-        }
-};
-
-class GLImmutableBuffer : public GLBuffer
-{
-      public:
-        GLImmutableBuffer() = delete;
-
-        template <typename T>
-        GLImmutableBuffer(const GLContext&, std::span<const T> data, gl::BufferStorageMask accessFlags)
-        {
-                static_assert(std::is_trivially_copyable_v<T>, "Buffer data must be copyable!");
-
-                allocatedSizeBytes = data.size() * sizeof(T);
-
-                gl::glCreateBuffers(1, &bufferID);
-                gl::glNamedBufferStorage(bufferID, static_cast<gl::GLsizeiptr>(allocatedSizeBytes), data.data(),
-                                         accessFlags);
-
-                spdlog::trace("Created mutable buffer: {}, with {} bytes", bufferID, allocatedSizeBytes);
-        }
-
-        GLImmutableBuffer(const GLContext&, size_t sizeBytes, gl::BufferStorageMask storageMask)
+        GLBuffer(const GLContext&, size_t sizeBytes, gl::BufferStorageMask storageMask)
         {
                 allocatedSizeBytes = sizeBytes;
 
@@ -219,10 +80,10 @@ class GLImmutableBuffer : public GLBuffer
                 gl::glNamedBufferStorage(bufferID, static_cast<gl::GLsizeiptr>(allocatedSizeBytes), nullptr,
                                          storageMask);
 
-                spdlog::trace("Created mutable buffer: {}, with {} bytes", bufferID, allocatedSizeBytes);
+                spdlog::trace("Created buffer: {}, with {} bytes", bufferID, allocatedSizeBytes);
         }
 
-        ~GLImmutableBuffer()
+        ~GLBuffer()
         {
                 gl::glDeleteBuffers(1, &bufferID);
                 spdlog::trace("Destroyed Buffer: {}", bufferID);
@@ -232,17 +93,17 @@ class GLImmutableBuffer : public GLBuffer
         // I'm still torn on this but I HATE
         // the idea of a random uninitialized buffer
         // just existing, it kills me. So no move/copy
-        GLImmutableBuffer(const GLImmutableBuffer&) = delete;
-        GLImmutableBuffer& operator=(const GLImmutableBuffer&) = delete;
-        GLImmutableBuffer(GLImmutableBuffer&& other) = delete;
-        GLImmutableBuffer& operator=(GLImmutableBuffer&&) = delete;
+        GLBuffer(const GLBuffer&) = delete;
+        GLBuffer& operator=(const GLBuffer&) = delete;
+        GLBuffer(GLBuffer&& other) = delete;
+        GLBuffer& operator=(GLBuffer&&) = delete;
 
-        virtual void bind(gl::GLenum target) override
+        virtual void bind(gl::GLenum target)
         {
                 glBindBuffer(target, bufferID);
         }
 
-        virtual void bindBase(gl::GLenum target, gl::GLuint base) override
+        virtual void bindBase(gl::GLenum target, gl::GLuint base)
         {
                 glBindBufferBase(target, base, bufferID);
         }
@@ -279,6 +140,12 @@ class GLImmutableBuffer : public GLBuffer
         {
                 gl::glUnmapNamedBuffer(bufferID);
         }
+
+      private:
+        std::size_t allocatedSizeBytes;
+        gl::GLuint bufferID;
+
+        friend class GLVertexArray;
 };
 
 class GLVertexArray
@@ -308,15 +175,14 @@ class GLVertexArray
                 gl::glBindVertexArray(vaoID);
         }
 
-        void bindVertexBuffer(gl::GLuint bindingIndex, const gl::GLuint& bufferID, gl::GLintptr offset,
-                              gl::GLsizei stride)
+        void bindVertexBuffer(gl::GLuint bindingIndex, const GLBuffer& buffer, gl::GLintptr offset, gl::GLsizei stride)
         {
-                gl::glVertexArrayVertexBuffer(vaoID, bindingIndex, bufferID, offset, stride);
+                gl::glVertexArrayVertexBuffer(vaoID, bindingIndex, buffer.bufferID, offset, stride);
         }
 
-        void bindElementBuffer(const gl::GLuint& bufferID)
+        void bindElementBuffer(const GLBuffer& buffer)
         {
-                gl::glVertexArrayElementBuffer(vaoID, bufferID);
+                gl::glVertexArrayElementBuffer(vaoID, buffer.bufferID);
         }
 
         void defineAttribute(gl::GLuint attribIndex, gl::GLuint bindingIndex, gl::GLint size, gl::GLenum type,
@@ -331,9 +197,103 @@ class GLVertexArray
         gl::GLuint vaoID;
 };
 
-class GLTexture
+class GLTexture2D
 {
       public:
-        GLTexture(const GLContext&);
-        ~GLTexture();
+        GLTexture2D(const GLContext&, std::size_t width, std::size_t height, gl::GLenum internalFormat,
+                    std::size_t suggestedLevels = 0)
+            : w(width), h(height)
+        {
+                const int maxLevels = static_cast<int>(std::log2(std::min(w, h))) - 1;
+                const int levels = std::max(maxLevels, 1);
+
+                gl::glCreateTextures(gl::GLenum::GL_TEXTURE_2D, 1, &textureID);
+                gl::glTextureStorage2D(
+                    textureID, suggestedLevels > 0 ? std::min(static_cast<int>(suggestedLevels), maxLevels) : levels,
+                    internalFormat, static_cast<gl::GLsizei>(w), static_cast<gl::GLsizei>(h));
+
+                gl::glTextureParameteri(textureID, gl::GLenum::GL_TEXTURE_MIN_FILTER,
+                                        gl::GLenum::GL_LINEAR_MIPMAP_LINEAR);
+        }
+
+        GLTexture2D(const GLContext&, const RawTexture& texture) : w(texture.getWidth()), h(texture.getHeight())
+        {
+                gl::GLenum format;
+                switch (texture.getChannels())
+                {
+                case 1:
+                        format = gl::GLenum::GL_R;
+                        break;
+                case 2:
+                        format = gl::GLenum::GL_RG;
+                        break;
+                case 3:
+                        format = gl::GLenum::GL_RGB;
+                        break;
+                default:
+                        format = gl::GLenum::GL_RGBA;
+                        break;
+                }
+
+                const int maxLevels = static_cast<int>(std::log2(std::min(w, h))) - 1;
+                const int levels = std::max(maxLevels, 1);
+
+                gl::glCreateTextures(gl::GLenum::GL_TEXTURE_2D, 1, &textureID);
+                gl::glTextureStorage2D(textureID, levels, gl::GLenum::GL_RGBA8, static_cast<gl::GLsizei>(w),
+                                       static_cast<gl::GLsizei>(h));
+
+                gl::glTextureParameteri(textureID, gl::GLenum::GL_TEXTURE_MIN_FILTER,
+                                        gl::GLenum::GL_LINEAR_MIPMAP_LINEAR);
+
+                subImage(0, 0, 0, w, h, format, texture.getData());
+        }
+
+        ~GLTexture2D()
+        {
+                gl::glDeleteTextures(1, &textureID);
+        }
+
+        GLTexture2D(const GLTexture2D&) = delete;
+        GLTexture2D& operator=(const GLTexture2D&) = delete;
+
+        GLTexture2D(GLTexture2D&& other) = delete;
+        GLTexture2D& operator=(const GLTexture2D&&) = delete;
+
+        void subImage(std::size_t level, std::size_t offsetX, std::size_t offsetY, std::size_t width,
+                      std::size_t height, gl::GLenum format, std::span<const std::uint8_t> data)
+        {
+                gl::glTextureSubImage2D(textureID, static_cast<gl::GLint>(level), static_cast<gl::GLint>(offsetX),
+                                        static_cast<gl::GLint>(offsetY), static_cast<gl::GLsizei>(width),
+                                        static_cast<gl::GLsizei>(height), format, gl::GLenum::GL_UNSIGNED_BYTE,
+                                        data.data());
+        }
+
+        void fillMipmaps()
+        {
+                gl::glGenerateTextureMipmap(textureID);
+        }
+
+        void bindUnit(int unit)
+        {
+                gl::glBindTextureUnit(unit, textureID);
+        }
+
+        std::size_t getWidth() const
+        {
+                return w;
+        }
+
+        std::size_t getHeight() const
+        {
+                return h;
+        }
+
+        gl::GLuint getID()
+        {
+                return textureID;
+        }
+
+      private:
+        const std::size_t w, h;
+        gl::GLuint textureID;
 };

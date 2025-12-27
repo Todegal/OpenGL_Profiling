@@ -17,10 +17,10 @@ layout(std140) uniform FrameUniformsBuffer
     mat4 uViewMatrix;
     vec3 uCameraPosition;
 
-    // vec4 uDirectionalShadowCascadePlanes;
-    //
-    // float uPointShadowFarPlane;
-    // float uPointShadowNearPlane;
+    vec4 uDirectionalShadowCascadePlanes;
+
+    float uPointShadowFarPlane;
+    float uPointShadowNearPlane;
 
     int uNumPointLights;
     int uNumDirectionalLights;

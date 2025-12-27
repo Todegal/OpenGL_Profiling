@@ -1,16 +1,20 @@
 #pragma once
 
-#include "renderPass.h"
+#include "render_pass.h"
 
 class ForwardRenderPass : public RenderPass
 {
-public:
-	ForwardRenderPass(RenderContext& renderContext);
+      public:
+        ForwardRenderPass(GLContext& context, RenderContext& renderContext);
 
-public:
-	void frame() override;
-	void refresh() override;
+      public:
+        void frameStart() override
+        {
+        }
 
-private:
-	ShaderProgram forwardPassShader;
+        void frameExecute() override;
+        void refresh() override;
+
+      private:
+        GLShaderProgram forwardPassShader;
 };

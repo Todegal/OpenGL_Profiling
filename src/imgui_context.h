@@ -2,8 +2,8 @@
 
 #include <imgui.h>
 
-#include "timer.h"
 #include "imgui_profile_visualiser.h"
+#include "timer.h"
 #include "window.h"
 
 class EngineImGuiContext
@@ -17,14 +17,17 @@ class EngineImGuiContext
 
         void draw();
 
-	ImGuiProfileVisualiser& getProfiler() { return profiler; }
+        ImGuiProfileVisualiser& getProfiler()
+        {
+                return profiler;
+        }
 
       private:
         bool showMetrics;
-	    bool showProfiler;
+        bool showProfiler;
 
         float frametime;
-	ImGuiProfileVisualiser profiler;
+        ImGuiProfileVisualiser profiler;
 
         void drawMetrics();
         void drawMenuBar();

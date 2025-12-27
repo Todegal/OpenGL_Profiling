@@ -3,17 +3,17 @@ cmake_minimum_required(VERSION 3.5)
 project(graphics_engine LANGUAGES C CXX)
 
 list(APPEND source
-	# src/render_pass.cpp
+	src/render_context.cpp
 	src/raw_data.cpp
 	# src/pbr_renderer_old.cpp
-	# src/pbr_renderer.cpp
+	src/pbr_renderer.cpp
 	src/orbit_camera.cpp
 	# src/model.cpp
 	src/main.cpp
 	src/input_handler.cpp
 	src/imgui_context.cpp
-	# src/hdr_render_pass.cpp
-	# src/forward_render_pass.cpp
+	src/hdr_render_pass.cpp
+	src/forward_render_pass.cpp
 	# src/character_controller.cpp
 	# src/animation_controller.cpp
 	src/window.cpp
@@ -27,8 +27,9 @@ list(APPEND source
 list(APPEND include
 	src/transform.h
 	src/timer.h
-	src/scene.h
+	# src/scene.h
 	src/render_pass.h
+	src/render_context.h
 	src/raw_data.h
 	# src/pbr_renderer_old.h
 	src/pbr_renderer.h

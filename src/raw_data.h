@@ -105,9 +105,9 @@ class RawTexture
         RawTexture(const std::filesystem::path& filepath, const std::filesystem::path& rootDir = "");
         ~RawTexture() = default;
 
-        const std::span<const uint8_t> getData() const
+        const std::span<const uint8_t> getData() const noexcept
         {
-                return dataSpan;
+                return {dataPointer.get(), dataSize};
         }
 
         uint32_t getWidth() const
@@ -130,12 +130,12 @@ class RawTexture
         }
 
       private:
-        std::span<const uint8_t> dataSpan;
         int channels;
         uint32_t width;
         uint32_t height;
 
         std::shared_ptr<uint8_t[]> dataPointer;
+        size_t dataSize;
 };
 
 // TODO -> add materials
@@ -152,7 +152,7 @@ class RawMaterial
                 return (albedoTexture != nullptr);
         }
 
-        const std::unique_ptr<RawTexture>& getAlbedoTexture() const
+        std::shared_ptr<const RawTexture> getAlbedoTexture() const
         {
                 return albedoTexture;
         }
@@ -169,7 +169,7 @@ class RawMaterial
                 return (metallicRoughnessTexture != nullptr);
         }
 
-        const std::unique_ptr<RawTexture>& getMetallicRoughnessTexture() const
+        std::shared_ptr<const RawTexture> getMetallicRoughnessTexture() const
         {
                 return metallicRoughnessTexture;
         }
@@ -179,12 +179,32 @@ class RawMaterial
                 return metallicRoughnessFactor;
         }
 
+        // NORMAL
+
+        bool hasNormalTexture() const
+        {
+                return (normalTexture != nullptr);
+        }
+
+        auto getNormalTexture() const
+        {
+                return normalTexture;
+        }
+
+        auto getNormalScale() const
+        {
+                return normalScale;
+        }
+
       private:
-        std::unique_ptr<RawTexture> albedoTexture;
+        std::shared_ptr<const RawTexture> albedoTexture;
         glm::vec4 albedoFactor;
 
-        std::unique_ptr<RawTexture> metallicRoughnessTexture;
+        std::shared_ptr<const RawTexture> metallicRoughnessTexture;
         glm::vec4 metallicRoughnessFactor;
+
+        std::shared_ptr<const RawTexture> normalTexture;
+        float normalScale;
 };
 
 // So this is the container class

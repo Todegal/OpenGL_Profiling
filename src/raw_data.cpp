@@ -148,7 +148,7 @@ RawTexture::RawTexture(const aiTexture* texture)
                 channels = comp;
 
                 dataPointer = std::shared_ptr<uint8_t[]>(data, stbi_image_free);
-                dataSpan = std::span<uint8_t>(dataPointer.get(), width * height * channels);
+                dataSize = width * height * channels;
         }
         else
         {
@@ -161,7 +161,7 @@ RawTexture::RawTexture(const aiTexture* texture)
 
                 std::memcpy(dataPointer.get(), texture->pcData, size);
 
-                dataSpan = std::span<const uint8_t>(dataPointer.get(), width * height * sizeof(aiTexel));
+                dataSize = width * height * sizeof(aiTexel);
         }
 
         if (width == 0 || height == 0) { throw std::runtime_error("Invalid texture format!"); }
@@ -192,7 +192,7 @@ RawTexture::RawTexture(const std::filesystem::path& filepath, const std::filesys
         channels = comp;
 
         dataPointer = std::shared_ptr<uint8_t[]>(data, stbi_image_free);
-        dataSpan = std::span<uint8_t>(dataPointer.get(), width * height * channels);
+        dataSize = width * height * channels;
 
         spdlog::trace("Loaded texture: {}", filepath.string());
 }
@@ -230,11 +230,11 @@ RawMaterial::RawMaterial(const aiMaterial* material, aiTexture** textures, const
                 int index = std::atoi(metallicRoughnessPath.C_Str() + 1);
                 const aiTexture* texture = textures[index];
 
-                metallicRoughnessTexture = std::make_unique<RawTexture>(texture);
+                metallicRoughnessTexture = std::make_shared<const RawTexture>(texture);
         }
         else if (!metallicRoughnessPath.Empty())
         {
-                metallicRoughnessTexture = std::make_unique<RawTexture>(metallicRoughnessPath.C_Str(), rootDir);
+                metallicRoughnessTexture = std::make_shared<const RawTexture>(metallicRoughnessPath.C_Str(), rootDir);
         }
         else { metallicRoughnessTexture = nullptr; }
 
@@ -243,4 +243,23 @@ RawMaterial::RawMaterial(const aiMaterial* material, aiTexture** textures, const
         material->Get(AI_MATKEY_ROUGHNESS_FACTOR, roughnessFactor);
 
         metallicRoughnessFactor = glm::vec4(0.0f, roughnessFactor, metallicFactor, 0.0f);
+
+        aiString normalPath;
+        material->GetTexture(aiTextureType_NORMALS, 0, &normalPath);
+
+        if (normalPath.C_Str()[0] == '*')
+        {
+                int index = std::atoi(normalPath.C_Str() + 1);
+                const aiTexture* texture = textures[index];
+
+                normalTexture = std::make_shared<const RawTexture>(texture);
+        }
+        else if (!normalPath.Empty())
+        {
+                normalTexture = std::make_shared<const RawTexture>(normalPath.C_Str(), rootDir);
+        }
+        else { normalTexture = nullptr; }
+
+        // TODO: find a way to get this from ASSIMP if required...
+        normalScale = 1.0f;
 }

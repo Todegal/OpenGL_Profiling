@@ -21,18 +21,21 @@ class GLFWContext
         void pollEvents();
 };
 
-struct WindowFlags
+struct WindowCreationFlags
 {
-        bool startMaximized = false;
+        std::size_t width = 1920;
+        std::size_t height = 1080;
+        std::string title = "";
+        bool maximized = false;
         bool resizable = false;
-
-        std::int8_t samples{};
+        bool fullscreen = false;
+        std::int8_t samples = 1;
 };
 
 class Window
 {
       public:
-        Window(const GLFWContext&, int startWidth, int startHeight, std::string title, const WindowFlags& flags);
+        Window(const GLFWContext&, const WindowCreationFlags& flags);
         ~Window();
 
         Window(Window&) = delete;

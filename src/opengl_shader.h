@@ -54,26 +54,23 @@ class GLShaderProgram
 
         void setUniformValue(const std::string& name, const glm::vec4& value);
         void setUniformValue(const std::string& name, const int value);
+        void setUniformValue(const std::string& name, const glm::vec2& value);
 
         void setUniformBlockBinding(const std::string& name, const gl::GLuint binding);
         void setShaderStorageBlockBinding(const std::string& name, const gl::GLuint binding);
 
-        void useProgram()
+        void useProgram() const
         {
-                gl::glUseProgram(programId);
-        }
-
-        gl::GLuint getProgramId() const
-        {
-                return programId;
+                gl::glUseProgram(programID);
         }
 
       private:
-        gl::GLuint programId;
+        gl::GLuint programID;
 
         std::unordered_set<std::string> uniformVariableNames;
         std::unordered_set<std::string> uniformBlockNames;
         std::unordered_set<std::string> shaderStorageBlockNames;
 
-        std::unordered_set<std::string> getResourceNames(gl::GLenum resourceInterface);
+        std::unordered_set<std::string> getResourceNames(gl::GLenum resourceInterface) const;
+        gl::GLint getUniformLocation(const std::string& name);
 };
