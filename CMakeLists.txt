@@ -21,6 +21,7 @@ list(APPEND source
 	src/opengl_shader.cpp
 	src/profiler.cpp
 	src/imgui_profile_visualiser.cpp
+	src/imgui_scene_graph_visualiser.cpp
 	# src/simple_renderer.cpp
 )
 
@@ -50,6 +51,7 @@ list(APPEND include
 	# src/simple_renderer.h
 	src/mem_print.h
 	src/scene_graph.h
+	src/imgui_scene_graph_visualiser.h
 )
 
 if (MSVC)

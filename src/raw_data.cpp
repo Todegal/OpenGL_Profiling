@@ -105,8 +105,7 @@ void RawScene::addFile(const std::filesystem::path& filePath)
 
         spdlog::trace("Loaded file: {}", filePath.string());
 
-        const auto& root = sceneGraph.addNode(scene->mName.C_Str(), sceneGraph.getRoot());
-        processNode(scene->mRootNode, root);
+        processNode(scene->mRootNode, sceneGraph.getRoot());
 
         meshes.reserve(meshes.size() + scene->mNumMeshes);
         for (size_t i = 0; i < scene->mNumMeshes; i++)

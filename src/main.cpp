@@ -25,10 +25,10 @@
 #include "pbr_renderer.h"
 #include "profiler.h"
 #include "raw_data.h"
+#include "scene_graph.h"
 #include "simple_renderer.h"
 #include "timer.h"
 #include "window.h"
-#include "scene_graph.h"
 
 #include <numbers>
 
@@ -43,7 +43,7 @@ int main(int argc, char** argv)
             .store_into(filepath);
 
         bool fullscreen;
-        program.add_argument("--fullscreen")
+        program.add_argument("-fs", "--fullscreen")
             .help("If present the engine will launch in fullscreen mode")
             .flag()
             .store_into(fullscreen);
@@ -94,10 +94,6 @@ int main(int argc, char** argv)
 
                 GLContext glContext(window);
 
-#ifndef NDEBUG
-                EngineImGuiContext imguiContext(window, timer);
-#endif
-
                 InputHandler input(window);
                 input.defineAction("orbit", {}, {GLFW_MOUSE_BUTTON_1});
                 input.defineAction("zoom", {}, {GLFW_MOUSE_BUTTON_2});
@@ -121,10 +117,15 @@ int main(int argc, char** argv)
                 {
                         RawScene scene(sceneGraph);
                         scene.addFile(filepath);
-                        scene.addFile("test_models/tv/Television_01_4k.gltf");
+                        //scene.addFile("test_models/tv/Television_01_4k.gltf");
+                        scene.addFile("test_models/Dummy/Dummy.glb");
 
                         renderer = std::make_unique<PBRRenderer>(glContext, scene, sceneGraph, orbitCamera);
                 }
+
+#ifndef NDEBUG
+                EngineImGuiContext imguiContext(window, sceneGraph, timer);
+#endif
 
 #ifndef NDEBUG
                 Profiler::EndRegion();

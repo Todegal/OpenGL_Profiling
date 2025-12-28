@@ -7,7 +7,8 @@
 #include "profiler.h"
 #include "timer.h"
 
-EngineImGuiContext::EngineImGuiContext(const Window& window, Timer<>& timer) : showMetrics(false), showProfiler(false), profiler()
+EngineImGuiContext::EngineImGuiContext(const Window& window, const SceneGraph& sceneGraph, Timer<>& timer)
+    : showMetrics(false), showProfiler(false), showSceneGraph(false), profiler(), sceneGraphVisualiser(sceneGraph)
 {
         PROFILE_FUNCTION();
 
@@ -46,6 +47,7 @@ void EngineImGuiContext::draw()
         drawMenuBar();
         if (showMetrics) { drawMetrics(); }
         if (showProfiler) { profiler.render(&showProfiler); }
+        if (showSceneGraph) { sceneGraphVisualiser.render(&showSceneGraph); }
 
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
@@ -78,6 +80,7 @@ void EngineImGuiContext::drawMenuBar()
                 {
                         ImGui::MenuItem("Frame Metrics", "", &showMetrics);
                         ImGui::MenuItem("Profiler", "", &showProfiler);
+                        ImGui::MenuItem("Scene Graph", "", &showSceneGraph);
 
                         ImGui::EndMenu();
                 }
