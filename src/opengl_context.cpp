@@ -7,6 +7,7 @@
 
 #include "mem_print.h"
 #include "profiler.h"
+#include "scene_graph.h"
 
 static const auto openglLogger = spdlog::stdout_color_mt("OpenGL");
 
@@ -56,13 +57,12 @@ GLContext::GLContext(const Window& window) : windowRef(window)
         PROFILE_FUNCTION();
 
         glfwMakeContextCurrent(window.getWindowPtr().get());
-        glfwSwapInterval(0);
 
-        glbinding::initialize(glfwGetProcAddress);
+        glbinding::initialize(glfwGetProcAddress, true);
 
 #ifndef NDEBUG
         glbinding::setCallbackMaskExcept(
-            glbinding::CallbackMask::After | glbinding::CallbackMask::ParametersAndReturnValue, {"glGetError"});
+            glbinding::CallbackMask::BeforeAndAfter | glbinding::CallbackMask::ParametersAndReturnValue, {"glGetError"});
 
         glbinding::setAfterCallback(debugLogCallback);
 #endif

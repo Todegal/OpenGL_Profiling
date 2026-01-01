@@ -32,6 +32,11 @@
 
 #include <numbers>
 
+extern "C"
+{
+        __declspec(dllexport) unsigned long NvOptimusEnablement = 0x00000001;
+}
+
 int main(int argc, char** argv)
 {
         argparse::ArgumentParser program("graphics_engine", "0.0.1");
@@ -71,7 +76,7 @@ int main(int argc, char** argv)
         Timer timer;
 
 #ifndef NDEBUG
-        spdlog::set_level(spdlog::level::debug);
+        spdlog::set_level(spdlog::level::trace);
 #endif
         spdlog::set_pattern("[%H:%M:%S][%n] [%^%l%$] %v"); // logger name, coloured level, message
         spdlog::set_default_logger(spdlog::stdout_color_mt("graphics_engine"));
@@ -88,10 +93,10 @@ int main(int argc, char** argv)
                 flags.fullscreen = fullscreen;
                 flags.width = dimensions.at(0);
                 flags.height = dimensions.at(1);
+                // flags.resizable = true;
                 flags.title = std::format("-- graphics engine (built: {}@{}) --", __DATE__, __TIME__);
 
                 Window window(glfwContext, flags);
-
                 GLContext glContext(window);
 
                 InputHandler input(window);
@@ -111,20 +116,21 @@ int main(int argc, char** argv)
                     std::make_shared<OrbitCamera>(viewCenter, upVector, 1.0f, 0.01f);
 
                 std::unique_ptr<PBRRenderer> renderer;
-
-                SceneGraph sceneGraph;
+                std::unique_ptr<SceneGraph> sceneGraph;
 
                 {
-                        RawScene scene(sceneGraph);
-                        scene.addFile(filepath);
-                        //scene.addFile("test_models/tv/Television_01_4k.gltf");
-                        scene.addFile("test_models/Dummy/Dummy.glb");
+                        RawScene rawScene;
+                        rawScene.addFile(filepath);
+                        rawScene.addFile("test_models/Dummy/Dummy.glb");
 
-                        renderer = std::make_unique<PBRRenderer>(glContext, scene, sceneGraph, orbitCamera);
+                        sceneGraph = std::make_unique<SceneGraph>(rawScene);
+                        renderer = std::make_unique<PBRRenderer>(glContext, rawScene, *sceneGraph, orbitCamera);
                 }
 
+                // window.onFramebufferResize([&renderer]() { renderer->resize(); });
+
 #ifndef NDEBUG
-                EngineImGuiContext imguiContext(window, sceneGraph, timer);
+                EngineImGuiContext imguiContext(window, *sceneGraph, timer);
 #endif
 
 #ifndef NDEBUG
@@ -174,7 +180,8 @@ int main(int argc, char** argv)
                                 orbitCamera->zoom(mouseOffset.y * 10.0f);
                         }
 
-                        // todo: remove this and sort out some ui
+                        // todo:
+                        //         remove this and sort out some ui RenderFlags newFlags;
                         RenderFlags newFlags;
                         newFlags.set<RenderFlags::HDR_PASS_ENABLED>(input.getToggle("toggle_hdr"));
                         newFlags.set<RenderFlags::FORWARD_PASS_ENABLED>(input.getToggle("toggle_forward_pass"));
@@ -193,7 +200,7 @@ int main(int argc, char** argv)
                         window.swapBuffers();
                 }
         }
-        catch (const std::runtime_error& e)
+        catch (const std::exception& e)
         {
                 spdlog::critical(e.what());
                 return EXIT_FAILURE;

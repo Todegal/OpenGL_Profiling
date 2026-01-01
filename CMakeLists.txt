@@ -14,6 +14,7 @@ list(APPEND source
 	src/imgui_context.cpp
 	src/hdr_render_pass.cpp
 	src/forward_render_pass.cpp
+	src/scene_graph.cpp
 	# src/character_controller.cpp
 	# src/animation_controller.cpp
 	src/window.cpp
@@ -29,7 +30,6 @@ list(APPEND include
 	src/transform.h
 	src/timer.h
 	# src/scene.h
-	src/render_pass.h
 	src/render_context.h
 	src/raw_data.h
 	# src/pbr_renderer_old.h

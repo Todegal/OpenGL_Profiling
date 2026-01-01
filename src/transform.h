@@ -321,12 +321,12 @@ class Transform
                 return normalMatrix;
         }
 
-        glm::vec3 getTranslation() const
+        const glm::vec3 getTranslation() const
         {
                 return glm::vec3(matrix[3]);
         }
 
-        glm::quat getRotation() const
+        const glm::quat getRotation() const
         {
                 glm::mat3 rotMat(matrix);
                 // Remove scale
@@ -336,7 +336,7 @@ class Transform
                 return glm::quat_cast(rotMat);
         }
 
-        glm::vec3 getScale() const
+        const glm::vec3 getScale() const
         {
                 return glm::vec3(glm::length(glm::vec3(matrix[0])), glm::length(glm::vec3(matrix[1])),
                                  glm::length(glm::vec3(matrix[2])));

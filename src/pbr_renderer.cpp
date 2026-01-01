@@ -3,16 +3,17 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
-PBRRenderer::PBRRenderer(GLContext& context, const RawScene& sceneData, const SceneGraph& sceneGraph, std::shared_ptr<Camera> initialCamera)
+PBRRenderer::PBRRenderer(GLContext& context, const RawScene& sceneData, const SceneGraph& sceneGraph,
+                         std::shared_ptr<Camera> initialCamera)
     : glContext(context), renderContext(context, sceneData, sceneGraph, initialCamera), sceneGraph(sceneGraph)
 {
         PROFILE_FUNCTION();
 
         // define uniform buffers
-        renderContext.globalBuffers["ObjectBuffer"] = std::make_unique<GLBuffer>(
+        renderContext.globalBuffers["ObjectBuffer"] = std::make_shared<GLBuffer>(
             glContext, sizeof(RenderContext::ObjectMatrices), gl::BufferStorageMask::GL_DYNAMIC_STORAGE_BIT);
 
-        renderContext.globalBuffers["FrameUniformsBuffer"] = std::make_unique<GLBuffer>(
+        renderContext.globalBuffers["FrameUniformsBuffer"] = std::make_shared<GLBuffer>(
             glContext, sizeof(RenderContext::FrameUniforms), gl::BufferStorageMask::GL_DYNAMIC_STORAGE_BIT);
 
         // setup lights
@@ -30,7 +31,7 @@ PBRRenderer::PBRRenderer(GLContext& context, const RawScene& sceneData, const Sc
         renderContext.pointLights[3].radiance = glm::vec4(5.0f, 5.0f, 5.0f, 0.0f);
         renderContext.pointLights[3].position = glm::vec4(0.0f, 1.0f, 0.0f, 0.0f);
 
-        renderContext.globalBuffers["PointLightBuffer"] = std::make_unique<GLBuffer>(
+        renderContext.globalBuffers["PointLightBuffer"] = std::make_shared<GLBuffer>(
             glContext, sizeof(renderContext.pointLights[0]) * renderContext.pointLights.size(),
             gl::BufferStorageMask::GL_DYNAMIC_STORAGE_BIT);
 
@@ -40,6 +41,8 @@ PBRRenderer::PBRRenderer(GLContext& context, const RawScene& sceneData, const Sc
         // declare passes
         forwardPass = std::make_unique<ForwardRenderPass>(context, renderContext);
         hdrPass = std::make_unique<HDRRenderPass>(context, renderContext);
+
+        renderPasses = {forwardPass.get(), hdrPass.get()};
 }
 
 void PBRRenderer::frame()
@@ -58,10 +61,11 @@ void PBRRenderer::frame()
         renderContext.globalBuffers.at("FrameUniformsBuffer")
             ->subData<RenderContext::FrameUniforms>(0, std::span(&renderContext.frameUniforms, 1));
 
-        renderContext.framebuffer->bindDraw();
+        //renderContext.framebuffer->bindDraw();
+        gl::glBindFramebuffer(gl::GLenum::GL_FRAMEBUFFER, 0);
 
         forwardPass->frameStart();
-        hdrPass->frameStart();
+        //hdrPass->frameStart();
 
         const static auto clearColour = glm::vec4(glm::vec3(0.0f), 1.0f);
         const static auto clearDepth = 1.0f;
@@ -71,17 +75,29 @@ void PBRRenderer::frame()
 
         gl::glViewport(0, 0, screenDimensions.x, screenDimensions.y);
 
-        renderContext.framebuffer->clearBuffer(gl::GLenum::GL_COLOR, 0, glm::value_ptr(clearColour));
-        renderContext.framebuffer->clearBuffer(gl::GLenum::GL_DEPTH, 0, &clearDepth);
+        //renderContext.framebuffer->clearBuffer(gl::GLenum::GL_COLOR, 0, glm::value_ptr(clearColour));
+        //renderContext.framebuffer->clearBuffer(gl::GLenum::GL_DEPTH, 0, &clearDepth);
+
+        gl::glClear(gl::ClearBufferMask::GL_COLOR_BUFFER_BIT | gl::ClearBufferMask::GL_DEPTH_BUFFER_BIT);
 
         forwardPass->frameExecute();
-        hdrPass->frameExecute();
+        //hdrPass->frameExecute();
 
         // present to default framebuffer todo: fix this do better please
-        renderContext.framebuffer->blitToScreen(screenDimensions.x, screenDimensions.y);
+        //renderContext.framebuffer->blitToScreen(screenDimensions.x, screenDimensions.y);
 
         forwardPass->frameEnd();
-        hdrPass->frameEnd();
+        //hdrPass->frameEnd();
 
-        gl::glBindFramebuffer(gl::GL_FRAMEBUFFER, 0);
+        //gl::glBindFramebuffer(gl::GL_FRAMEBUFFER, 0);
+}
+
+void PBRRenderer::resize()
+{
+        renderContext.resize();
+
+        for (const auto pass : renderPasses)
+        {
+                pass->resize();
+        }
 }

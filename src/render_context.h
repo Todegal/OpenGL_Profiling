@@ -12,6 +12,7 @@
 #include "camera.h"
 #include "opengl_context.h"
 #include "opengl_shader.h"
+#include "scene_graph.h"
 
 constexpr std::uint8_t NUM_CASCADES =
     5; // todo: this is a magic number which can only be modified at build time, and is shared with the shader system.
@@ -60,7 +61,8 @@ class RenderFlags
 class RenderContext
 {
       public:
-        RenderContext(GLContext& context, const RawScene& sceneData, const SceneGraph& sceneGraph, std::shared_ptr<Camera> initialCamera);
+        RenderContext(GLContext& context, const RawScene& sceneData, const SceneGraph& sceneGraph,
+                      std::shared_ptr<Camera> initialCamera);
         ~RenderContext() = default;
 
         RenderContext() = delete;
@@ -72,15 +74,17 @@ class RenderContext
         RenderContext& operator=(const RenderContext&&) = delete;
 
         void drawScene();
-        //void drawOpaqueScene();
-        //void drawtranslucentscene();
+        // void drawOpaqueScene();
+        // void drawtranslucentscene();
 
         void drawScene(GLShaderProgram& shaderProgram);
-        //void drawOpaqueScene(GLShaderProgram& shaderProgram);
-        //void drawTranslucentScene(GLShaderProgram& shaderProgram);
+        // void drawOpaqueScene(GLShaderProgram& shaderProgram);
+        // void drawTranslucentScene(GLShaderProgram& shaderProgram);
 
         // will draw a triangle big enough to cover the whole screen
         void drawFullscreen();
+
+        void resize();
 
         RenderFlags renderFlags;
 
@@ -101,10 +105,12 @@ class RenderContext
 
         std::vector<DirectionalLight> directionalLight;
 
+#pragma warning(disable : 4324)
+
         struct ObjectMatrices
         {
                 glm::mat4 modelMatrix;
-                glm::mat3x4 normalMatrix;
+                glm::mat4 normalMatrix;
         };
 
         struct FrameUniforms
@@ -125,7 +131,7 @@ class RenderContext
 
         std::unordered_map<std::string, std::unique_ptr<GLTexture2D>> globalTextures;
 
-        std::unordered_map<std::string, std::unique_ptr<GLBuffer>> globalBuffers;
+        std::unordered_map<std::string, std::shared_ptr<GLBuffer>> globalBuffers;
 
         std::unordered_map<std::string, gl::GLuint> globalResources; // todo: refactor this away, this is stop gap while
                                                                      // I figure out how to wrap other opengl objects
@@ -137,26 +143,9 @@ class RenderContext
 
       private:
         GLContext& glContext;
-
         const SceneGraph& sceneGraph;
 
-        // Here we store all of the scene data
-        struct RenderMesh
-        {
-                std::unique_ptr<GLBuffer> vbo{};
-                std::unique_ptr<GLBuffer> ebo{};
-                std::unique_ptr<GLVertexArray> vao{};
-
-                std::size_t vertexCount{};
-
-                std::size_t materialIdx{};
-
-                Point3<LocalSpace> centre{};
-        };
-
-        std::vector<std::shared_ptr<RenderMesh>> meshes;
-        std::vector<std::shared_ptr<RenderMesh>> opaqueMeshes;
-        std::vector<std::shared_ptr<RenderMesh>> translucentMeshes;
+        std::vector<std::shared_ptr<GLTexture2D>> textures;
 
         struct RenderMaterial
         {
@@ -169,10 +158,24 @@ class RenderContext
                 std::shared_ptr<GLTexture2D> normalTexture{};
                 float normalScale{};
         };
-
         std::vector<std::shared_ptr<RenderMaterial>> materials;
 
-        std::vector<std::shared_ptr<GLTexture2D>> textures;
+        // Here we store all of the scene data
+        struct RenderMesh
+        {
+                std::unique_ptr<GLBuffer> vbo{};
+                std::unique_ptr<GLBuffer> ebo{};
+                std::unique_ptr<GLVertexArray> vao{};
+
+                std::size_t vertexCount{};
+
+                std::shared_ptr<RenderMaterial> material{};
+
+                Point3<LocalSpace> centre{};
+        };
+        std::vector<std::shared_ptr<RenderMesh>> meshes;
+        std::vector<std::shared_ptr<RenderMesh>> opaqueMeshes;
+        std::vector<std::shared_ptr<RenderMesh>> translucentMeshes;
 
         // data for a fullscreen tri used in fullscreen rendering
         std::unique_ptr<GLBuffer> fullscreenTriBuffer;

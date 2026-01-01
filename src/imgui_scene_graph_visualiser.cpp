@@ -4,16 +4,18 @@
 
 #include <glm/gtx/string_cast.hpp>
 
+#include <glm/gtc/type_ptr.hpp>
+
 ImGuiSceneGraph::ImGuiSceneGraph(const SceneGraph& sceneGraph) : sceneGraph(sceneGraph)
 {
 }
 
-void ImGuiSceneGraph::renderSceneNodeRecursive(std::shared_ptr<SceneNode> node)
+void ImGuiSceneGraph::renderSceneNodeRecursive(std::shared_ptr<SceneNode> node, std::uint32_t id)
 {
-        ImGui::PushID(node->getID());
+        ImGui::PushID(id);
 
         // Highlight selected node
-        bool isSelected = (selectedNodeId == static_cast<std::int64_t>(node->getID()));
+        bool isSelected = (selectedNodeId == static_cast<std::int64_t>(id));
         if (isSelected) { ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.3f, 0.5f, 0.8f, 0.8f)); }
 
         // Node icon/color indicator
@@ -34,7 +36,7 @@ void ImGuiSceneGraph::renderSceneNodeRecursive(std::shared_ptr<SceneNode> node)
         }
         else { nodeOpen = ImGui::TreeNodeEx(node->getName().c_str(), flags); }
 
-        if (ImGui::IsItemClicked()) { selectedNodeId = node->getID(); }
+        if (ImGui::IsItemClicked()) { selectedNodeId = id; }
 
         if (isSelected) { ImGui::PopStyleColor(); }
 
@@ -43,7 +45,7 @@ void ImGuiSceneGraph::renderSceneNodeRecursive(std::shared_ptr<SceneNode> node)
         {
                 for (auto& child : node->getChildren())
                 {
-                        renderSceneNodeRecursive(child);
+                        renderSceneNodeRecursive(child, ++id);
                 }
                 ImGui::TreePop();
         }
@@ -63,13 +65,34 @@ void ImGuiSceneGraph::renderInfoPanel()
         ImGui::Separator();
         ImGui::Spacing();
 
-        // Properties
-        ImGui::Text("Transform");
+        ImGui::Text("Local Transform");
+        ImGui::Indent();
+
+        // ImGui::Text("Translation: %s", glm::to_string(node->getLocalTranslation()).c_str());
+
+        auto translation = node->getLocalTranslation();
+        ImGui::Text("Translation: ");
+        ImGui::SameLine();
+        if (ImGui::DragFloat3("t", glm::value_ptr(translation), 0.01f)) { node->setLocalTranslation(translation); }
+
+        auto rotation = node->getLocalRotationEuler();
+        ImGui::Text("Rotation: ");
+        ImGui::SameLine();
+        if (ImGui::DragFloat3("r", glm::value_ptr(rotation))) { node->setLocalRotationEuler(rotation); }
+
+        auto scale = node->getLocalScale();
+        ImGui::Text("Scale: ");
+        ImGui::SameLine();
+        if (ImGui::DragFloat3("s", glm::value_ptr(scale), 0.01f)) { node->setLocalScale(scale); }
+
+        ImGui::Unindent();
+
+        ImGui::Text("World Transform");
         ImGui::Indent();
 
         ImGui::Text("Position: %s", glm::to_string(node->getWorldPosition().getv()).c_str());
-        ImGui::Text("Rotation: %s", glm::to_string(node->getWorldTransform().getRotation()).c_str());
-        ImGui::Text("Scale: %s", glm::to_string(node->getWorldTransform().getScale()).c_str());
+        ImGui::Text("Rotation: %s", glm::to_string(node->getWorldRotation()).c_str());
+        ImGui::Text("Scale: %s", glm::to_string(node->getWorldScale()).c_str());
 
         ImGui::Unindent();
 }

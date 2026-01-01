@@ -40,6 +40,6 @@ void ForwardRenderPass::frameEnd()
         PROFILE_FUNCTION();
 }
 
-void ForwardRenderPass::refresh()
+void ForwardRenderPass::resize()
 {
 }

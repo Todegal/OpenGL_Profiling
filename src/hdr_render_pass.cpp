@@ -48,6 +48,11 @@ void HDRRenderPass::frameEnd()
         PROFILE_FUNCTION();
 }
 
-void HDRRenderPass::refresh()
+void HDRRenderPass::resize()
 {
+        PROFILE_FUNCTION();
+
+        const auto& screenDimensions = glContext.getWindow().getFramebufferSize();
+        renderContext.globalTextures["hdr_colour_target"] =
+            std::make_unique<GLTexture2D>(glContext, screenDimensions.x, screenDimensions.y, gl::GLenum::GL_RGB32F, 1);
 }

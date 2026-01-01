@@ -4,7 +4,9 @@
 #include <glm/vec2.hpp>
 #include <spdlog/spdlog.h>
 
+#include <functional>
 #include <memory>
+#include <vector>
 
 class GLFWContext
 {
@@ -52,15 +54,15 @@ class Window
                         glfwDestroyWindow(w);
                 }
         };
-        using GLFWUniqueWindowPtr = std::unique_ptr<GLFWwindow, GLFWwindow_Deleter>;
-
-        GLFWUniqueWindowPtr windowPtr;
 
       public:
+        using GLFWUniqueWindowPtr = std::unique_ptr<GLFWwindow, GLFWwindow_Deleter>;
         const GLFWUniqueWindowPtr& getWindowPtr() const
         {
                 return windowPtr;
         }
+
+        void onFramebufferResize(std::function<void()> func);
 
         bool shouldClose() const
         {
@@ -69,5 +71,13 @@ class Window
 
         void swapBuffers();
 
-        glm::ivec2 getFramebufferSize() const;
+        const glm::ivec2& getFramebufferSize() const;
+
+      private:
+        GLFWUniqueWindowPtr windowPtr;
+        glm::ivec2 framebufferSize;
+
+        std::vector<std::function<void()>> resizeCallbacks;
+
+        static void framebufferResizeCallback(GLFWwindow* window, int width, int height);
 };

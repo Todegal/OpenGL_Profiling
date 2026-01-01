@@ -33,6 +33,23 @@ void GLFWContext::pollEvents()
         glfwPollEvents();
 }
 
+void Window::framebufferResizeCallback(GLFWwindow* window, int width, int height)
+{
+        auto self = static_cast<Window*>(glfwGetWindowUserPointer(window));
+        self->framebufferSize.x = width;
+        self->framebufferSize.y = height;
+
+        for (const auto& func : self->resizeCallbacks)
+        {
+                func();
+        }
+}
+
+void Window::onFramebufferResize(std::function<void()> func)
+{
+        resizeCallbacks.push_back(func);
+}
+
 Window::Window(const GLFWContext&, const WindowCreationFlags& flags)
 {
         PROFILE_FUNCTION();
@@ -65,17 +82,23 @@ Window::Window(const GLFWContext&, const WindowCreationFlags& flags)
         }
         else if (width == 0 || height == 0) { throw std::runtime_error("Width and Height must be positive integers"); }
 
+        framebufferSize.x = static_cast<int>(width);
+        framebufferSize.y = static_cast<int>(height);
+
         GLFWwindow_Deleter windowDeleter;
         windowPtr =
             GLFWUniqueWindowPtr(glfwCreateWindow(static_cast<int>(width), static_cast<int>(height), flags.title.c_str(),
                                                  flags.fullscreen ? monitor : nullptr, nullptr),
                                 windowDeleter);
+
         if (windowPtr == nullptr)
         {
                 glfwTerminate();
                 throw std::runtime_error("Failed to create window!");
         }
 
+        glfwSetWindowUserPointer(windowPtr.get(), this);
+        glfwSetFramebufferSizeCallback(windowPtr.get(), framebufferResizeCallback);
         if (flags.maximized) { glfwMaximizeWindow(windowPtr.get()); }
 }
 
@@ -90,12 +113,7 @@ void Window::swapBuffers()
         glfwSwapBuffers(windowPtr.get());
 }
 
-glm::ivec2 Window::getFramebufferSize() const
+const glm::ivec2& Window::getFramebufferSize() const
 {
-        PROFILE_FUNCTION();
-
-        int x, y;
-        glfwGetFramebufferSize(windowPtr.get(), &x, &y);
-
-        return glm::max(glm::ivec2(x, y), glm::ivec2(1, 1));
+        return framebufferSize;
 }

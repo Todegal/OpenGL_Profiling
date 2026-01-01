@@ -13,14 +13,14 @@
 class PBRRenderer
 {
       public:
-        PBRRenderer(GLContext& context, const RawScene& sceneData, const SceneGraph& sceneGraph, std::shared_ptr<Camera> initialCamera);
+        PBRRenderer(GLContext& context, const RawScene& sceneData, const SceneGraph& sceneGraph,
+                    std::shared_ptr<Camera> initialCamera);
         ~PBRRenderer() = default;
 
         // No copy/move
         PBRRenderer(const PBRRenderer&) = delete;
         PBRRenderer& operator=(const PBRRenderer) = delete;
 
-        // void setScene(const RawScene& scene);
         void setCamera(std::shared_ptr<Camera> newCamera)
         {
                 renderContext.camera = newCamera;
@@ -31,9 +31,8 @@ class PBRRenderer
                 renderContext.renderFlags = flags;
         }
 
-        // void resize(glm::ivec2 screenSize);
+         void resize();
 
-        // void imguiFrame(imgui_data& data);
         void frame();
 
       private:
@@ -44,4 +43,6 @@ class PBRRenderer
 
         std::unique_ptr<HDRRenderPass> hdrPass;
         std::unique_ptr<ForwardRenderPass> forwardPass;
+
+        std::array<RenderPass*, 2> renderPasses;
 };

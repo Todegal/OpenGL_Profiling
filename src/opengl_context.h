@@ -252,18 +252,18 @@ class GLTexture2D : public GLTexture
       public:
         GLTexture2D(const GLContext& c, std::size_t width, std::size_t height, gl::GLenum internalFormat,
                     std::size_t suggestedLevels = 0)
-            : GLTexture(c, gl::GLenum::GL_TEXTURE_2D), w(width), h(height)
+            : GLTexture(c, gl::GLenum::GL_TEXTURE_2D), size(width, height)
         {
-                const int maxLevels = static_cast<int>(std::log2(std::min(w, h))) - 1;
+                const int maxLevels = static_cast<int>(std::log2(std::min(size.x, size.y))) - 1;
                 const int levels = std::max(maxLevels, 1);
 
                 gl::glTextureStorage2D(
                     textureID, suggestedLevels > 0 ? std::min(static_cast<int>(suggestedLevels), maxLevels) : levels,
-                    internalFormat, static_cast<gl::GLsizei>(w), static_cast<gl::GLsizei>(h));
+                    internalFormat, static_cast<gl::GLsizei>(size.x), static_cast<gl::GLsizei>(size.y));
         }
 
         GLTexture2D(const GLContext& c, const RawTexture& texture)
-            : GLTexture(c, gl::GLenum::GL_TEXTURE_2D), w(texture.getWidth()), h(texture.getHeight())
+            : GLTexture(c, gl::GLenum::GL_TEXTURE_2D), size(texture.getDimensions())
         {
                 gl::GLenum format;
                 gl::GLenum internalFormat;
@@ -287,13 +287,13 @@ class GLTexture2D : public GLTexture
                         break;
                 }
 
-                const int maxLevels = static_cast<int>(std::log2(std::min(w, h))) - 1;
+                const int maxLevels = static_cast<int>(std::log2(std::min(size.x, size.y))) - 1;
                 const int levels = std::max(maxLevels, 1);
 
-                gl::glTextureStorage2D(textureID, levels, internalFormat, static_cast<gl::GLsizei>(w),
-                                       static_cast<gl::GLsizei>(h));
+                gl::glTextureStorage2D(textureID, levels, internalFormat, static_cast<gl::GLsizei>(size.x),
+                                       static_cast<gl::GLsizei>(size.y));
 
-                subImage(0, 0, 0, w, h, format, texture.getData());
+                subImage(0, 0, 0, size.x, size.y, format, texture.getData());
         }
 
         void subImage(std::size_t level, std::size_t offsetX, std::size_t offsetY, std::size_t width,
@@ -315,18 +315,13 @@ class GLTexture2D : public GLTexture
                 gl::glBindTextureUnit(unit, textureID);
         }
 
-        std::size_t getWidth() const
+        const glm::ivec2 getDimensions() const
         {
-                return w;
-        }
-
-        std::size_t getHeight() const
-        {
-                return h;
+                return size;
         }
 
       private:
-        const std::size_t w, h;
+        const glm::ivec2 size;
 };
 
 class GLRenderbuffer

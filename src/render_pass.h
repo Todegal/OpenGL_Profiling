@@ -24,5 +24,5 @@ class RenderPass
         virtual void frameExecute() = 0;
         virtual void frameEnd() = 0;
 
-        virtual void refresh() = 0;
+        virtual void resize() = 0;
 };

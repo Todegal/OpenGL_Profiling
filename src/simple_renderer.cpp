@@ -92,7 +92,7 @@ SimpleRenderer::SimpleRenderer(GLContext& glContext, const RawScene& scene, cons
                                        static_cast<gl::GLuint>(sizeof(glm::vec3) * 2)); // texcoords
 
                 // Load the texture
-                std::shared_ptr<const RawTexture> albedo = materials[mesh->getMaterialIndex()]->getAlbedoTexture();
+                std::shared_ptr<const RawTexture> albedo = materials[mesh->getMaterial()]->getAlbedoTexture();
                 if (albedo)
                 {
                         m->albedoTexture = std::make_unique<GLTexture2D>(glContext, *albedo);
@@ -102,10 +102,10 @@ SimpleRenderer::SimpleRenderer(GLContext& glContext, const RawScene& scene, cons
                 }
                 else { m->albedoTexture = nullptr; }
 
-                m->albedoFactor = materials[mesh->getMaterialIndex()]->getAlbedoFactor();
+                m->albedoFactor = materials[mesh->getMaterial()]->getAlbedoFactor();
 
                 std::shared_ptr<const RawTexture> metallicRoughness =
-                    materials[mesh->getMaterialIndex()]->getMetallicRoughnessTexture();
+                    materials[mesh->getMaterial()]->getMetallicRoughnessTexture();
                 if (metallicRoughness)
                 {
                         m->metallicRoughnessTexture = std::make_unique<GLTexture2D>(glContext, *metallicRoughness);
@@ -115,9 +115,9 @@ SimpleRenderer::SimpleRenderer(GLContext& glContext, const RawScene& scene, cons
                 }
                 else { m->metallicRoughnessTexture = nullptr; }
 
-                m->metallicRoughnessFactor = materials[mesh->getMaterialIndex()]->getAlbedoFactor();
+                m->metallicRoughnessFactor = materials[mesh->getMaterial()]->getAlbedoFactor();
 
-                std::shared_ptr<const RawTexture> normal = materials[mesh->getMaterialIndex()]->getNormalTexture();
+                std::shared_ptr<const RawTexture> normal = materials[mesh->getMaterial()]->getNormalTexture();
                 if (normal)
                 {
                         m->normalTexture = std::make_unique<GLTexture2D>(glContext, *normal);
@@ -127,7 +127,7 @@ SimpleRenderer::SimpleRenderer(GLContext& glContext, const RawScene& scene, cons
                 }
                 else { m->normalTexture = nullptr; }
 
-                m->normalScale = materials[mesh->getMaterialIndex()]->getNormalScale();
+                m->normalScale = materials[mesh->getMaterial()]->getNormalScale();
         }
 
         // NOW, let's create the uniform buffers

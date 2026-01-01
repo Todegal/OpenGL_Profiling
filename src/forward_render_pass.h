@@ -11,7 +11,7 @@ class ForwardRenderPass : public RenderPass
         void frameStart() override;
         void frameExecute() override;
         void frameEnd() override;
-        void refresh() override;
+        void resize() override;
 
       private:
         GLShaderProgram forwardPassShader;

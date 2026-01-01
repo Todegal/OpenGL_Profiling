@@ -17,6 +17,6 @@ class ImGuiSceneGraph
 
         int selectedNodeId = -1;
 
-        void renderSceneNodeRecursive(std::shared_ptr<SceneNode> node);
+        void renderSceneNodeRecursive(std::shared_ptr<SceneNode> node, std::uint32_t id = 0);
         void renderInfoPanel();
 };
